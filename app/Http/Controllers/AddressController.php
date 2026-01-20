@@ -21,6 +21,12 @@ class AddressController extends Controller
             ->sortBy(function ($address) {
                 // Sort by house number numerically first, then lexicographically
                 $houseNumber = $address->house_number;
+                
+                // Handle null or empty house numbers
+                if (empty($houseNumber)) {
+                    return [PHP_INT_MAX, ''];
+                }
+                
                 if (is_numeric($houseNumber)) {
                     return [(int) $houseNumber, ''];
                 }

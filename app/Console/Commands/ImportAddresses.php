@@ -84,7 +84,7 @@ class ImportAddresses extends Command
             if ($geocode && $postcode) {
                 // Use cache to avoid repeated API calls
                 if (!isset($geocodeCache[$postcode])) {
-                    $baseUrl = config('app.postcodes_io_base', 'https://api.postcodes.io');
+                    $baseUrl = config('services.postcodes.base_url', env('POSTCODES_IO_BASE', 'https://api.postcodes.io'));
                     $response = Http::get("{$baseUrl}/postcodes/" . urlencode($postcode));
                     
                     if ($response->successful()) {
