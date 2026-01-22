@@ -18,6 +18,21 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Create sample users
+        User::create([
+            'name' => 'Admin User',
+            'email' => 'admin@example.com',
+            'password' => bcrypt('password'),
+            'role' => User::ROLE_ADMIN,
+        ]);
+
+        User::create([
+            'name' => 'Canvasser User',
+            'email' => 'canvasser@example.com',
+            'password' => bcrypt('password'),
+            'role' => User::ROLE_CANVASSER,
+        ]);
+
         // Create sample canvassers
         $canvasserNames = ['Sarah Thompson', 'John Davies', 'Emma Wilson', 'Michael Brown', 'Lucy Chen'];
         foreach ($canvasserNames as $name) {
