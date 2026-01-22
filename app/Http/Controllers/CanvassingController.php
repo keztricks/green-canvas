@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Address;
 use App\Models\Canvasser;
 use App\Models\KnockResult;
+use App\Models\Ward;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -12,8 +13,22 @@ class CanvassingController extends Controller
 {
     public function index()
     {
-        // Get all unique streets with address counts
-        $streets = Address::select('street_name', 'town')
+        // Get all wards with address counts
+        $wards = Ward::active()
+            ->withCount('addresses')
+            ->orderBy('name')
+            ->get();
+
+        return view('canvassing.index', compact('wards'));
+    }
+
+    public function ward($wardId)
+    {
+        $ward = Ward::findOrFail($wardId);
+        
+        // Get all unique streets in this ward with address counts
+        $streets = Address::byWard($wardId)
+            ->select('street_name', 'town')
             ->selectRaw('COUNT(*) as address_count')
             ->selectRaw('COUNT(DISTINCT knock_results.id) as knocked_count')
             ->leftJoin('knock_results', 'addresses.id', '=', 'knock_results.address_id')
@@ -21,19 +36,22 @@ class CanvassingController extends Controller
             ->orderBy('street_name')
             ->get();
 
-        return view('canvassing.index', compact('streets'));
+        return view('canvassing.ward', compact('ward', 'streets'));
     }
 
-    public function street($streetName)
+    public function street($wardId, $streetName)
     {
-        $addresses = Address::byStreet($streetName)
+        $ward = Ward::findOrFail($wardId);
+        
+        $addresses = Address::byWard($wardId)
+            ->byStreet($streetName)
             ->with(['knockResults' => function($query) {
                 $query->latest('knocked_at');
             }])
             ->get();
 
         if ($addresses->isEmpty()) {
-            return redirect()->route('canvassing.index')
+            return redirect()->route('canvassing.ward', $wardId)
                 ->with('error', 'Street not found');
         }
 
@@ -41,7 +59,7 @@ class CanvassingController extends Controller
         $responseOptions = KnockResult::responseOptions();
         $canvassers = Canvasser::active()->orderBy('name')->get();
 
-        return view('canvassing.street', compact('addresses', 'streetName', 'town', 'responseOptions', 'canvassers'));
+        return view('canvassing.street', compact('ward', 'addresses', 'streetName', 'town', 'responseOptions', 'canvassers'));
     }
 
     public function store(Request $request)

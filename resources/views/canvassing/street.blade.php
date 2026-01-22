@@ -2,14 +2,17 @@
     <div class="py-6">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="mb-6">
-        <a href="{{ route('canvassing.index') }}" class="text-[#6AB023] hover:text-[#5a9620]">
-            ← Back to Streets
+        <a href="{{ route('canvassing.ward', $ward->id) }}" class="text-[#6AB023] hover:text-[#5a9620]">
+            ← Back to {{ $ward->name }} Streets
         </a>
     </div>
 
     <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-3xl font-bold mb-2 text-gray-800">{{ $streetName }}</h2>
-        <p class="text-gray-600 mb-6">{{ $town }}</p>
+        <div class="mb-6">
+            <p class="text-sm text-gray-600">{{ $ward->name }}</p>
+            <h2 class="text-3xl font-bold mb-2 text-gray-800">{{ $streetName }}</h2>
+            <p class="text-gray-600">{{ $town }}</p>
+        </div>
 
         <div class="space-y-4">
             @foreach($addresses as $address)

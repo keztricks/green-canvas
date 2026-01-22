@@ -6,6 +6,7 @@ use App\Models\Address;
 use App\Models\Canvasser;
 use App\Models\KnockResult;
 use App\Models\User;
+use App\Models\Ward;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -32,6 +33,35 @@ class DatabaseSeeder extends Seeder
             'password' => bcrypt('password'),
             'role' => User::ROLE_CANVASSER,
         ]);
+
+        // Create wards
+        $wardNames = [
+            'Brighouse',
+            'Elland',
+            'Greetland',
+            'Halifax Town',
+            'Hebden Bridge & Todmorden East',
+            'Hipperholme & Lightcliffe',
+            'Illingworth & Mixenden',
+            'Luddendenfoot',
+            'Northowram & Shelf',
+            'Ovenden',
+            'Park',
+            'Rastrick',
+            'Ryburn',
+            'Salterhebble Southowram and Skircoat Green',
+            'Sowerby Bridge',
+            'Todmorden West',
+            'Wainhouse',
+            'Warley',
+        ];
+        
+        foreach ($wardNames as $wardName) {
+            Ward::create(['name' => $wardName]);
+        }
+        
+        // Get Wainhouse ward for sample addresses
+        $wainhouseWard = Ward::where('name', 'Wainhouse')->first();
 
         // Create sample canvassers
         $canvasserNames = ['Sarah Thompson', 'John Davies', 'Emma Wilson', 'Michael Brown', 'Lucy Chen'];
@@ -130,6 +160,7 @@ class DatabaseSeeder extends Seeder
         foreach ($streets as $streetData) {
             foreach ($streetData['houses'] as $index => $houseNumber) {
                 $address = Address::create([
+                    'ward_id' => $wainhouseWard->id,
                     'house_number' => $houseNumber,
                     'street_name' => $streetData['street_name'],
                     'town' => $streetData['town'],

@@ -22,7 +22,8 @@ Route::middleware('auth')->group(function () {
 
     // Canvassing routes
     Route::get('/canvassing', [CanvassingController::class, 'index'])->name('canvassing.index');
-    Route::get('/street/{streetName}', [CanvassingController::class, 'street'])->name('canvassing.street');
+    Route::get('/ward/{ward}', [CanvassingController::class, 'ward'])->name('canvassing.ward');
+    Route::get('/ward/{ward}/street/{streetName}', [CanvassingController::class, 'street'])->name('canvassing.street');
     Route::post('/knock-result', [CanvassingController::class, 'store'])->name('knock-result.store');
 
     // Canvasser management routes

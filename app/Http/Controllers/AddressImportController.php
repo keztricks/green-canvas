@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Address;
+use App\Models\Ward;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -11,12 +12,14 @@ class AddressImportController extends Controller
     public function index()
     {
         $addressCount = Address::count();
-        return view('import.index', compact('addressCount'));
+        $wards = Ward::active()->orderBy('name')->get();
+        return view('import.index', compact('addressCount', 'wards'));
     }
 
     public function store(Request $request)
     {
         $request->validate([
+            'ward_id' => 'required|exists:wards,id',
             'csv_file' => 'required|file|mimes:csv,txt|max:10240',
         ]);
 
@@ -133,6 +136,7 @@ class AddressImportController extends Controller
                 $seen[$uniqueKey] = true;
 
                 Address::create([
+                    'ward_id' => $request->ward_id,
                     'house_number' => $houseNumber,
                     'street_name' => $streetName,
                     'town' => $town,

@@ -31,6 +31,23 @@
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Select Ward
+                </label>
+                <select name="ward_id" 
+                        required
+                        class="block w-full text-sm text-gray-900 border border-gray-300 rounded bg-gray-50 focus:outline-none p-2">
+                    <option value="">-- Select a ward --</option>
+                    @foreach($wards as $ward)
+                        <option value="{{ $ward->id }}">{{ $ward->name }}</option>
+                    @endforeach
+                </select>
+                @error('ward_id')
+                    <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
                     Select CSV File
                 </label>
                 <input type="file" 

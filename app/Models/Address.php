@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Address extends Model
 {
     protected $fillable = [
+        'ward_id',
         'house_number',
         'street_name',
         'town',
@@ -15,6 +16,11 @@ class Address extends Model
         'constituency',
         'sort_order',
     ];
+
+    public function ward()
+    {
+        return $this->belongsTo(Ward::class);
+    }
 
     public function knockResults(): HasMany
     {
@@ -34,5 +40,10 @@ class Address extends Model
     public function scopeByStreet($query, string $streetName)
     {
         return $query->where('street_name', $streetName)->orderBy('sort_order');
+    }
+
+    public function scopeByWard($query, int $wardId)
+    {
+        return $query->where('ward_id', $wardId);
     }
 }
