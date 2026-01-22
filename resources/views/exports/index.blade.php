@@ -1,9 +1,6 @@
-@extends('layouts.app')
-
-@section('title', 'Export History')
-
-@section('content')
-<div class="max-w-6xl mx-auto">
+<x-app-layout>
+    <div class="py-6">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="bg-white rounded-lg shadow p-6">
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-3xl font-bold text-gray-800">Export History</h2>
@@ -86,6 +83,6 @@
                 </p>
             </div>
         @endif
+        </div>
     </div>
-</div>
-@endsection
+</x-app-layout>

@@ -1,9 +1,6 @@
-@extends('layouts.app')
-
-@section('title', 'Create Export')
-
-@section('content')
-<div class="max-w-3xl mx-auto">
+<x-app-layout>
+    <div class="py-6">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="mb-6">
         <a href="{{ route('exports.index') }}" class="text-[#6AB023] hover:text-[#5a9620]">
             ← Back to Exports
@@ -77,6 +74,6 @@
                 </a>
             </div>
         </form>
+        </div>
     </div>
-</div>
-@endsection
+</x-app-layout>

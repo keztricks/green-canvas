@@ -1,9 +1,6 @@
-@extends('layouts.app')
-
-@section('title', 'Manage Canvassers')
-
-@section('content')
-<div class="max-w-4xl mx-auto">
+<x-app-layout>
+    <div class="py-6">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="bg-white rounded-lg shadow p-6">
         <h2 class="text-3xl font-bold mb-6 text-gray-800">Manage Canvassers</h2>
 
@@ -74,6 +71,6 @@
                 </p>
             </div>
         @endif
+        </div>
     </div>
-</div>
-@endsection
+</x-app-layout>

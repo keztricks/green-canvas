@@ -1,9 +1,6 @@
-@extends('layouts.app')
-
-@section('title', $streetName)
-
-@section('content')
-<div class="max-w-6xl mx-auto">
+<x-app-layout>
+    <div class="py-6">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="mb-6">
         <a href="{{ route('canvassing.index') }}" class="text-[#6AB023] hover:text-[#5a9620]">
             ← Back to Streets
@@ -121,4 +118,6 @@ function toggleForm(addressId) {
     form.classList.toggle('hidden');
 }
 </script>
-@endsection
+        </div>
+    </div>
+</x-app-layout>

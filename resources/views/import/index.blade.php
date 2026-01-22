@@ -1,9 +1,6 @@
-@extends('layouts.app')
-
-@section('title', 'Import Addresses')
-
-@section('content')
-<div class="max-w-3xl mx-auto">
+<x-app-layout>
+    <div class="py-6">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="bg-white rounded-lg shadow p-6">
         <h2 class="text-3xl font-bold mb-6 text-gray-800">Import Addresses</h2>
 
@@ -65,6 +62,6 @@
                 </form>
             </div>
         @endif
+        </div>
     </div>
-</div>
-@endsection
+</x-app-layout>
