@@ -76,16 +76,16 @@
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
-            <x-responsive-nav-link :href="route('canvassing.index')" :active="request()->routeIs('canvassing.*')" class="text-white">
+            <x-responsive-nav-link :href="route('canvassing.index')" :active="request()->routeIs('canvassing.*')">
                 {{ __('Streets') }}
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('canvassers.index')" :active="request()->routeIs('canvassers.*')" class="text-white">
+            <x-responsive-nav-link :href="route('canvassers.index')" :active="request()->routeIs('canvassers.*')">
                 {{ __('Canvassers') }}
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('import.index')" :active="request()->routeIs('import.*')" class="text-white">
+            <x-responsive-nav-link :href="route('import.index')" :active="request()->routeIs('import.*')">
                 {{ __('Import') }}
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('exports.index')" :active="request()->routeIs('exports.*')" class="text-white">
+            <x-responsive-nav-link :href="route('exports.index')" :active="request()->routeIs('exports.*')">
                 {{ __('Exports') }}
             </x-responsive-nav-link>
         </div>
@@ -93,8 +93,8 @@
         <!-- Responsive Settings Options -->
         <div class="pt-4 pb-1 border-t border-gray-200">
             <div class="px-4">
-                <div class="font-medium text-base text-white">{{ Auth::user()->name }}</div>
-                <div class="font-medium text-sm text-gray-200">{{ Auth::user()->email }}</div>
+                <div class="font-medium text-base text-gray-800">{{ Auth::user()->name }}</div>
+                <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
             </div>
 
             <div class="mt-3 space-y-1">
