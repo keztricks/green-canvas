@@ -12,6 +12,9 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
+    const ROLE_ADMIN = 'admin';
+    const ROLE_CANVASSER = 'canvasser';
+
     /**
      * The attributes that are mass assignable.
      *
@@ -21,6 +24,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
     ];
 
     /**
@@ -43,6 +47,33 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+        ];
+    }
+
+    /**
+     * Check if user is an admin.
+     */
+    public function isAdmin(): bool
+    {
+        return $this->role === self::ROLE_ADMIN;
+    }
+
+    /**
+     * Check if user is a canvasser.
+     */
+    public function isCanvasser(): bool
+    {
+        return $this->role === self::ROLE_CANVASSER;
+    }
+
+    /**
+     * Get available roles.
+     */
+    public static function roles(): array
+    {
+        return [
+            self::ROLE_CANVASSER => 'Canvasser',
+            self::ROLE_ADMIN => 'Admin',
         ];
     }
 }
