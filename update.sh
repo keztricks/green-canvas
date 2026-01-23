@@ -34,6 +34,16 @@ echo "🔄 Checking out $BRANCH..."
 git checkout "$BRANCH"
 git pull origin "$BRANCH"
 
+# Set application version from git tag
+echo "📝 Setting application version..."
+VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "dev")
+if grep -q "^APP_VERSION=" .env; then
+    sed -i.bak "s/^APP_VERSION=.*/APP_VERSION=$VERSION/" .env && rm .env.bak
+else
+    echo "APP_VERSION=$VERSION" >> .env
+fi
+echo "Version set to: $VERSION"
+
 # Install/update Composer dependencies
 echo "📦 Installing Composer dependencies..."
 composer install --no-dev --optimize-autoloader --no-interaction
