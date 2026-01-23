@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\AddressImportController;
-use App\Http\Controllers\CanvasserController;
 use App\Http\Controllers\CanvassingController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\ProfileController;
@@ -26,12 +25,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/ward/{ward}', [CanvassingController::class, 'ward'])->name('canvassing.ward');
     Route::get('/ward/{ward}/street/{streetName}', [CanvassingController::class, 'street'])->name('canvassing.street');
     Route::post('/knock-result', [CanvassingController::class, 'store'])->name('knock-result.store');
-
-    // Canvasser management routes
-    Route::get('/canvassers', [CanvasserController::class, 'index'])->name('canvassers.index');
-    Route::post('/canvassers', [CanvasserController::class, 'store'])->name('canvassers.store');
-    Route::delete('/canvassers/{canvasser}', [CanvasserController::class, 'destroy'])->name('canvassers.destroy');
-    Route::patch('/canvassers/{canvasser}/toggle', [CanvasserController::class, 'toggleActive'])->name('canvassers.toggle');
 
     // Export routes
     Route::get('/exports', [ExportController::class, 'index'])->name('exports.index');

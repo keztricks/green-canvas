@@ -15,9 +15,6 @@
                     <x-nav-link :href="route('canvassing.index')" :active="request()->routeIs('canvassing.*')" class="text-white hover:text-gray-200">
                         {{ __('Streets') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('canvassers.index')" :active="request()->routeIs('canvassers.*')" class="text-white hover:text-gray-200">
-                        {{ __('Canvassers') }}
-                    </x-nav-link>
                     <x-nav-link :href="route('import.index')" :active="request()->routeIs('import.*')" class="text-white hover:text-gray-200">
                         {{ __('Import') }}
                     </x-nav-link>
@@ -83,9 +80,6 @@
         <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('canvassing.index')" :active="request()->routeIs('canvassing.*')">
                 {{ __('Streets') }}
-            </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('canvassers.index')" :active="request()->routeIs('canvassers.*')">
-                {{ __('Canvassers') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('import.index')" :active="request()->routeIs('import.*')">
                 {{ __('Import') }}

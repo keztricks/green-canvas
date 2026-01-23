@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Address;
-use App\Models\Canvasser;
 use App\Models\KnockResult;
 use App\Models\User;
 use App\Models\Ward;
@@ -63,11 +62,8 @@ class DatabaseSeeder extends Seeder
         // Get Wainhouse ward for sample addresses
         $wainhouseWard = Ward::where('name', 'Wainhouse')->first();
 
-        // Create sample canvassers
-        $canvasserNames = ['Sarah Thompson', 'John Davies', 'Emma Wilson', 'Michael Brown', 'Lucy Chen'];
-        foreach ($canvasserNames as $name) {
-            Canvasser::create(['name' => $name]);
-        }
+        // Get created users for knock results
+        $users = User::all();
 
         // Create sample addresses for different streets in Skircoat ward, Halifax
         $streets = [
@@ -173,9 +169,9 @@ class DatabaseSeeder extends Seeder
                 if (rand(1, 3) === 1) {
                     KnockResult::create([
                         'address_id' => $address->id,
+                        'user_id' => $users->random()->id,
                         'response' => ['green', 'labour', 'conservative', 'lib_dem', 'undecided', 'not_home', 'refused'][array_rand(['green', 'labour', 'conservative', 'lib_dem', 'undecided', 'not_home', 'refused'])],
                         'notes' => rand(1, 2) === 1 ? null : ['Very friendly', 'Asked about climate policy', 'Concerned about local issues', 'Will consider voting'][array_rand(['Very friendly', 'Asked about climate policy', 'Concerned about local issues', 'Will consider voting'])],
-                        'canvasser_name' => ['Sarah', 'John', 'Emma', 'Michael', null][array_rand(['Sarah', 'John', 'Emma', 'Michael', null])],
                         'knocked_at' => now()->subDays(rand(0, 7)),
                     ]);
                 }

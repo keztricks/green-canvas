@@ -9,10 +9,10 @@ class KnockResult extends Model
 {
     protected $fillable = [
         'address_id',
+        'user_id',
         'response',
         'vote_likelihood',
         'notes',
-        'canvasser_name',
         'knocked_at',
     ];
 
@@ -23,6 +23,11 @@ class KnockResult extends Model
     public function address(): BelongsTo
     {
         return $this->belongsTo(Address::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     public static function responseOptions(): array

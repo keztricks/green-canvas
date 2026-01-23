@@ -51,8 +51,8 @@
                                     @endif
                                     <p class="text-xs text-gray-500 mt-1">
                                         {{ $latestResult->knocked_at->diffForHumans() }}
-                                        @if($latestResult->canvasser_name)
-                                            by {{ $latestResult->canvasser_name }}
+                                        @if($latestResult->user)
+                                            by {{ $latestResult->user->name }}
                                         @endif
                                     </p>
                                 </div>
@@ -102,19 +102,10 @@
                             <textarea name="notes" rows="2" class="w-full border border-gray-300 rounded px-3 py-2 text-sm"></textarea>
                         </div>
 
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Canvasser (optional)</label>
-                            <select name="canvasser_id" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
-                                <option value="">-- Select canvasser --</option>
-                                @foreach($canvassers as $canvasser)
-                                    <option value="{{ $canvasser->id }}">{{ $canvasser->name }}</option>
-                                @endforeach
-                            </select>
-                            @if($canvassers->isEmpty())
-                                <p class="text-xs text-gray-500 mt-1">
-                                    <a href="{{ route('canvassers.index') }}" class="text-[#6AB023] hover:underline">Add canvassers</a> to track who is knocking doors
-                                </p>
-                            @endif
+                        <div class="bg-gray-50 border border-gray-200 rounded p-3">
+                            <p class="text-sm text-gray-700">
+                                <span class="font-medium">Logged by:</span> {{ auth()->user()->name }}
+                            </p>
                         </div>
 
                         <div class="flex space-x-2">

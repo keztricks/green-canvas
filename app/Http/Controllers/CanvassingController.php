@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Address;
-use App\Models\Canvasser;
 use App\Models\KnockResult;
 use App\Models\Ward;
 use Illuminate\Http\Request;
@@ -57,9 +56,8 @@ class CanvassingController extends Controller
 
         $town = $addresses->first()->town;
         $responseOptions = KnockResult::responseOptions();
-        $canvassers = Canvasser::active()->orderBy('name')->get();
 
-        return view('canvassing.street', compact('ward', 'addresses', 'streetName', 'town', 'responseOptions', 'canvassers'));
+        return view('canvassing.street', compact('ward', 'addresses', 'streetName', 'town', 'responseOptions'));
     }
 
     public function store(Request $request)
@@ -69,18 +67,11 @@ class CanvassingController extends Controller
             'response' => 'required|in:not_home,conservative,labour,lib_dem,green,reform,your_party,undecided,refused,other',
             'vote_likelihood' => 'nullable|integer|min:1|max:5',
             'notes' => 'nullable|string|max:1000',
-            'canvasser_id' => 'nullable|exists:canvassers,id',
         ]);
 
         $validated['knocked_at'] = now();
+        $validated['user_id'] = auth()->id();
         
-        // Get canvasser name if canvasser_id provided
-        if (isset($validated['canvasser_id'])) {
-            $canvasser = Canvasser::find($validated['canvasser_id']);
-            $validated['canvasser_name'] = $canvasser->name;
-            unset($validated['canvasser_id']);
-        }
-
         KnockResult::create($validated);
 
         return back()->with('success', 'Result recorded successfully');
