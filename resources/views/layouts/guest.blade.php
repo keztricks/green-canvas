@@ -29,6 +29,14 @@
             <div class="w-full sm:max-w-md px-6 py-8 bg-white shadow-lg overflow-hidden sm:rounded-lg border-t-4 border-[#6AB023]">
                 {{ $slot }}
             </div>
+
+            <!-- Footer -->
+            <footer class="mt-8">
+                <div class="text-center text-sm text-gray-600">
+                    <div>v{{ config('app.version') }}</div>
+                    <div class="text-xs mt-1">Made in Halifax</div>
+                </div>
+            </footer>
         </div>
     </body>
 </html>
