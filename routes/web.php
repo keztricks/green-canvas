@@ -5,6 +5,7 @@ use App\Http\Controllers\CanvasserController;
 use App\Http\Controllers\CanvassingController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -43,6 +44,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/import', [AddressImportController::class, 'index'])->name('import.index');
     Route::post('/import', [AddressImportController::class, 'store'])->name('import.store');
     Route::delete('/import/clear', [AddressImportController::class, 'clear'])->name('import.clear');
+
+    // User management routes (admin only)
+    Route::resource('users', UserController::class);
 });
 
 require __DIR__.'/auth.php';
