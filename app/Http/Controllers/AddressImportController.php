@@ -6,6 +6,7 @@ use App\Models\Address;
 use App\Models\Ward;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class AddressImportController extends Controller
 {
@@ -14,6 +15,49 @@ class AddressImportController extends Controller
         $addressCount = Address::count();
         $wards = Ward::active()->orderBy('name')->get();
         return view('import.index', compact('addressCount', 'wards'));
+    }
+
+    private function loadStreetReference(string $wardName): array
+    {
+        // Map of ward reference files
+        $referenceFiles = [
+            'Wainhouse' => storage_path('app/ward-references/wainhouse.csv'),
+        ];
+        
+        $postcodeToStreet = [];
+        
+        if (!isset($referenceFiles[$wardName])) {
+            return $postcodeToStreet;
+        }
+        
+        $filePath = $referenceFiles[$wardName];
+        
+        if (!file_exists($filePath)) {
+            return $postcodeToStreet;
+        }
+        
+        $handle = fopen($filePath, 'r');
+        
+        // Skip header rows (first 14 lines based on the structure)
+        for ($i = 0; $i < 14; $i++) {
+            fgetcsv($handle);
+        }
+        
+        // Read data: columns are New Ward, Current Ward, Street, Full Address, Address 1-4, Post Code
+        while (($row = fgetcsv($handle)) !== false) {
+            if (count($row) < 9) continue;
+            
+            $street = trim($row[2]);
+            $postcode = trim($row[8]);
+            
+            if (!empty($street) && !empty($postcode)) {
+                $postcodeToStreet[$postcode] = $street;
+            }
+        }
+        
+        fclose($handle);
+        
+        return $postcodeToStreet;
     }
 
     public function store(Request $request)
@@ -38,6 +82,10 @@ class AddressImportController extends Controller
         try {
             $seen = [];
             
+            // Load street reference for this ward
+            $ward = Ward::find($request->ward_id);
+            $streetReference = $this->loadStreetReference($ward->name);
+            
             while (($row = fgetcsv($handle)) !== false) {
                 // Electoral register format: 
                 // Columns: 0=Prefix, 1=Number, 2=Suffix, 3=Markers, 4=DOB, 5=Name, 6=Postcode, 
@@ -47,82 +95,55 @@ class AddressImportController extends Controller
                     continue;
                 }
 
-                $address1 = trim($row[7]); // e.g., "1 Arden Mews" or "51 Wakefield Road" or "Flat A"
-                $address2 = trim($row[8]); // e.g., "Arden Road" or "Sowerby Bridge" or "100 Wakefield Road"
-                $address3 = trim($row[9]); // e.g., "Halifax" or "HX6 2AZ" or "Sowerby Bridge"
+                $addressFields = [
+                    trim($row[7] ?? ''),
+                    trim($row[8] ?? ''),
+                    trim($row[9] ?? ''),
+                    trim($row[10] ?? ''),
+                    trim($row[11] ?? ''),
+                    trim($row[12] ?? ''),
+                ];
+                
                 $postcode = trim($row[6]);
                 
-                // Skip if missing essential data
-                if (empty($address1) || empty($postcode)) {
+                // Skip if missing postcode
+                if (empty($postcode)) {
                     $skipped++;
                     continue;
                 }
 
-                // Determine street name and house number intelligently
-                $houseNumber = '';
-                $streetName = '';
-                $town = '';
+                // Try to get definitive street name from reference
+                $streetName = $streetReference[$postcode] ?? null;
                 
-                // Check if Address1 contains a building complex/block name
-                // These should NOT be treated as streets
-                $buildingComplexPattern = '/\b(Mews|Almshouses|Apartments|Flats|Court|House|Cottages|Villas|Mansions|Buildings|Block|Tower)\b/i';
-                
-                // Check if Address1 contains a number at the start
-                if (preg_match('/^(\d+[A-Za-z]?(?:-\d+)?)\s+(.+)/', $address1, $matches)) {
-                    $houseNumber = $matches[1];
-                    $remainder = $matches[2];
+                // If not in reference, parse from address fields
+                if (!$streetName) {
+                    $result = $this->parseAddressFields($addressFields);
                     
-                    // Check if remainder contains a building complex identifier
-                    if (preg_match($buildingComplexPattern, $remainder)) {
-                        // It's a building complex like "1 Arden Mews" or "1 Crossley Almshouses"
-                        // Use full Address1 as house number, Address2 as street
-                        $houseNumber = $address1;
-                        $streetName = $address2;
-                        $town = $address3;
-                    }
-                    // Check if remainder looks like a street name
-                    elseif (preg_match('/\b(Road|Street|Lane|Avenue|Drive|Way|Close|Place|Terrace|Walk|Gardens|Park|Grove|Crescent|Rise|View|Hill)\b/i', $remainder)) {
-                        // It's a proper street address like "51 Wakefield Road"
-                        $streetName = $remainder;
-                        $town = $address2;
-                    }
-                    else {
-                        // Fallback: treat as building name
-                        $houseNumber = $address1;
-                        $streetName = $address2;
-                        $town = $address3;
-                    }
-                } 
-                // Check if Address1 is a flat/apartment designation
-                elseif (preg_match('/^(Flat|Apartment|Unit|Room)\s+([A-Z0-9]+)$/i', $address1)) {
-                    // Address2 should contain the street number and name
-                    if (preg_match('/^(\d+[A-Za-z]?)\s+(.+)/', $address2, $matches)) {
-                        $houseNumber = $matches[1] . ' ' . $address1;
-                        $streetName = $matches[2];
-                        $town = $address3;
-                    } else {
+                    if (!$result || !$result['street']) {
                         $skipped++;
                         continue;
                     }
-                }
-                // Check if Address1 ends with a known street type (like "Carlton House Terrace")
-                elseif (preg_match('/\b(Road|Street|Lane|Avenue|Drive|Way|Close|Place|Terrace|Walk|Gardens|Park|Grove|Crescent|Rise|View|Hill)$/i', $address1)) {
-                    // Treat as street name if it's just the street without number
-                    $houseNumber = $address1;
-                    $streetName = $address1;
-                    $town = $address2;
-                }
-                // Address1 is a building/complex name without a number
-                else {
-                    $houseNumber = $address1;
-                    $streetName = $address2;
-                    $town = $address3;
-                }
-                
-                // Final validation
-                if (empty($houseNumber) || empty($streetName)) {
-                    $skipped++;
-                    continue;
+                    
+                    $streetName = $result['street'];
+                    $houseNumber = $result['house_number'];
+                    $town = $result['town'] ?: 'Halifax';
+                } else {
+                    // Use reference street, extract house number
+                    $houseNumber = $this->extractHouseNumber($addressFields, $streetName);
+                    
+                    if (!$houseNumber) {
+                        $skipped++;
+                        continue;
+                    }
+                    
+                    // Find town from address fields
+                    $town = 'Halifax';
+                    foreach ($addressFields as $field) {
+                        if (preg_match('/^(Halifax|Sowerby Bridge|Copley)/i', $field)) {
+                            $town = $field;
+                            break;
+                        }
+                    }
                 }
 
                 // Create unique key to avoid duplicate addresses
@@ -176,6 +197,107 @@ class AddressImportController extends Controller
         // Extract numeric part from house number for sorting (e.g., "12A" -> 12)
         preg_match('/\d+/', $houseNumber, $matches);
         return $matches[0] ?? 0;
+    }
+
+    private function extractHouseNumber(array $addressFields, ?string $streetName = null): ?string
+    {
+        // Find the first field that contains useful house identifier
+        foreach ($addressFields as $field) {
+            $trimmed = trim($field);
+            if (empty($trimmed)) continue;
+            
+            // Skip if it's just a town name or postcode
+            if (preg_match('/^(Halifax|Sowerby Bridge|Copley|HX\d)/i', $trimmed)) continue;
+            
+            // If this field contains the street name, extract the part before it
+            if ($streetName && stripos($trimmed, $streetName) !== false) {
+                // Try to extract the part before the street name
+                $parts = preg_split('/' . preg_quote($streetName, '/') . '/i', $trimmed, 2);
+                if (!empty($parts[0])) {
+                    $houseNumber = trim($parts[0], ', ');
+                    if (!empty($houseNumber)) {
+                        return $houseNumber;
+                    }
+                }
+                // If nothing before street name, continue to next field
+                continue;
+            }
+            
+            return $trimmed;
+        }
+        return null;
+    }
+
+    private function parseAddressFields(array $addressFields): ?array
+    {
+        // Street type keywords - these definitively indicate a street name
+        $streetTypes = 'Road|Street|Lane|Avenue|Drive|Way|Close|Place|Terrace|Walk|Gardens|Park|Grove|Crescent|Rise|View|Hill|Square|Green|Mews|Row|Parade|Broadway|Circle|Path|Croft|Bank|Mount|Fold|Vale|Heights|Side|Yard|Promenade|Approach|Court';
+        
+        // Filter out empty fields and likely town/postcode fields
+        $cleanFields = [];
+        foreach ($addressFields as $field) {
+            $trimmed = trim($field);
+            if (empty($trimmed)) continue;
+            // Skip if it's just "Halifax" or looks like a postcode
+            if (preg_match('/^(Halifax|HX\d+\s*\d[A-Z]{2})$/i', $trimmed)) continue;
+            $cleanFields[] = $trimmed;
+        }
+        
+        if (empty($cleanFields)) {
+            return null;
+        }
+        
+        // Find the field that contains a street type keyword
+        $streetIndex = null;
+        $streetName = null;
+        
+        foreach ($cleanFields as $index => $field) {
+            if (preg_match('/\b(' . $streetTypes . ')\b/i', $field)) {
+                $streetIndex = $index;
+                $streetName = $field;
+                break;
+            }
+        }
+        
+        // If no street type found, use the second field as street (common pattern)
+        if (!$streetName && count($cleanFields) >= 2) {
+            $streetIndex = 1;
+            $streetName = $cleanFields[1];
+        }
+        
+        if (!$streetName) {
+            return null;
+        }
+        
+        // House number is everything before the street
+        $houseNumberParts = [];
+        for ($i = 0; $i < $streetIndex; $i++) {
+            $houseNumberParts[] = $cleanFields[$i];
+        }
+        
+        // If no parts before street, try to extract number from street field itself
+        if (empty($houseNumberParts)) {
+            if (preg_match('/^(\d+[A-Za-z]?(?:-\d+)?)\s+(.+)/', $streetName, $matches)) {
+                $houseNumberParts[] = $matches[1];
+                $streetName = $matches[2];
+            } else {
+                // Use full street as house number (e.g., building names)
+                $houseNumberParts[] = $streetName;
+            }
+        }
+        
+        // Town is anything after the street
+        $town = '';
+        for ($i = $streetIndex + 1; $i < count($cleanFields); $i++) {
+            $town = $cleanFields[$i];
+            break; // Take first one after street
+        }
+        
+        return [
+            'house_number' => implode(', ', $houseNumberParts),
+            'street' => $streetName,
+            'town' => $town,
+        ];
     }
 
     public function clear()

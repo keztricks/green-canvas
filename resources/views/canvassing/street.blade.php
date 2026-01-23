@@ -41,6 +41,11 @@
                                     <p class="font-medium text-sm">
                                         Last result: <span class="font-bold">{{ $responseOptions[$latestResult->response] }}</span>
                                     </p>
+                                    @if($latestResult->vote_likelihood)
+                                        <p class="text-sm text-gray-700 mt-1">
+                                            Vote likelihood: <span class="font-semibold">{{ $latestResult->vote_likelihood }}/5</span>
+                                        </p>
+                                    @endif
                                     @if($latestResult->notes)
                                         <p class="text-sm text-gray-600 mt-1">{{ $latestResult->notes }}</p>
                                     @endif
@@ -68,7 +73,7 @@
                         <input type="hidden" name="address_id" value="{{ $address->id }}">
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Response</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Voting Intention</label>
                             <div class="grid grid-cols-2 gap-2">
                                 @foreach($responseOptions as $value => $label)
                                     <label class="flex items-center space-x-2 p-2 border rounded hover:bg-gray-50 cursor-pointer">
@@ -77,6 +82,19 @@
                                     </label>
                                 @endforeach
                             </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Vote Likelihood (optional)</label>
+                            <div class="flex gap-3">
+                                @for($i = 1; $i <= 5; $i++)
+                                    <label class="flex items-center justify-center bg-white border-gray-400 rounded-lg hover:border-[#6AB023] cursor-pointer transition-all shadow-sm vote-likelihood-option" style="min-width: 64px; width: 64px; height: 64px; border-width: 3px;">
+                                        <input type="radio" name="vote_likelihood" value="{{ $i }}" class="sr-only" onchange="updateVoteLikelihood(this)">
+                                        <span class="text-2xl font-semibold text-gray-700">{{ $i }}</span>
+                                    </label>
+                                @endfor
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">1 = Very unlikely, 5 = Very likely</p>
                         </div>
 
                         <div>
@@ -119,6 +137,31 @@
 function toggleForm(addressId) {
     const form = document.getElementById(`form-${addressId}`);
     form.classList.toggle('hidden');
+}
+
+function updateVoteLikelihood(radio) {
+    // Get all vote likelihood labels in the same form
+    const form = radio.closest('form');
+    const labels = form.querySelectorAll('.vote-likelihood-option');
+    
+    // Reset all labels
+    labels.forEach(label => {
+        label.classList.remove('border-[#6AB023]', 'bg-green-50');
+        label.classList.add('border-gray-400');
+        label.style.borderWidth = '3px';
+        const span = label.querySelector('span');
+        span.classList.remove('text-[#6AB023]', 'font-bold');
+        span.classList.add('text-gray-700', 'font-semibold');
+    });
+    
+    // Highlight selected label
+    const selectedLabel = radio.closest('label');
+    selectedLabel.classList.remove('border-gray-400');
+    selectedLabel.classList.add('border-[#6AB023]', 'bg-green-50');
+    selectedLabel.style.borderWidth = '3px';
+    const span = selectedLabel.querySelector('span');
+    span.classList.remove('text-gray-700', 'font-semibold');
+    span.classList.add('text-[#6AB023]', 'font-bold');
 }
 </script>
         </div>

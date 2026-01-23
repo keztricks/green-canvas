@@ -10,6 +10,7 @@ class KnockResult extends Model
     protected $fillable = [
         'address_id',
         'response',
+        'vote_likelihood',
         'notes',
         'canvasser_name',
         'knocked_at',
@@ -33,9 +34,9 @@ class KnockResult extends Model
             'lib_dem' => 'Liberal Democrat',
             'green' => 'Green Party',
             'reform' => 'Reform UK',
+            'your_party' => 'Your Party',
             'undecided' => 'Undecided',
             'refused' => 'Refused to Say',
-            'moved' => 'Moved Away',
             'other' => 'Other Party',
         ];
     }

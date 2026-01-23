@@ -66,7 +66,8 @@ class CanvassingController extends Controller
     {
         $validated = $request->validate([
             'address_id' => 'required|exists:addresses,id',
-            'response' => 'required|in:not_home,conservative,labour,lib_dem,green,reform,undecided,refused,moved,other',
+            'response' => 'required|in:not_home,conservative,labour,lib_dem,green,reform,your_party,undecided,refused,other',
+            'vote_likelihood' => 'nullable|integer|min:1|max:5',
             'notes' => 'nullable|string|max:1000',
             'canvasser_id' => 'nullable|exists:canvassers,id',
         ]);
