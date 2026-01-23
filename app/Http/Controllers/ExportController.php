@@ -39,7 +39,10 @@ class ExportController extends Controller
 
         // Get all knock results with address information
         $results = KnockResult::with('address')
-            ->orderBy('knocked_at', 'desc')
+            ->join('addresses', 'knock_results.address_id', '=', 'addresses.id')
+            ->orderBy('addresses.street_name')
+            ->orderBy('addresses.sort_order')
+            ->select('knock_results.*')
             ->get();
 
         if ($results->isEmpty()) {
@@ -105,23 +108,26 @@ class ExportController extends Controller
             'Street Name',
             'Town',
             'Postcode',
-            'Response',
+            'Intention',
             'Notes',
-            'Canvasser',
+            'User',
             'Knocked At',
         ];
 
         // Data rows
         foreach ($results as $result) {
+            // Format intention as party code + likelihood
+            $intention = $this->formatIntention($result->response, $result->vote_likelihood);
+            
             $csv[] = [
                 now()->format('Y-m-d H:i:s'),
                 $result->address->house_number,
                 $result->address->street_name,
                 $result->address->town,
                 $result->address->postcode,
-                KnockResult::responseOptions()[$result->response] ?? $result->response,
+                $intention,
                 $result->notes ?? '',
-                $result->canvasser_name ?? '',
+                $result->user?->name ?? '',
                 $result->knocked_at->format('Y-m-d H:i:s'),
             ];
         }
@@ -136,5 +142,30 @@ class ExportController extends Controller
         fclose($output);
 
         return $csvContent;
+    }
+
+    private function formatIntention($response, $likelihood)
+    {
+        $codes = [
+            'conservative' => 'C',
+            'labour' => 'L',
+            'lib_dem' => 'LD',
+            'green' => 'G',
+            'reform' => 'R',
+            'your_party' => 'Y',
+            'undecided' => 'U',
+            'not_home' => 'NH',
+            'refused' => 'X',
+            'other' => 'O',
+        ];
+
+        $code = $codes[$response] ?? strtoupper(substr($response, 0, 1));
+        
+        // Add likelihood if present
+        if ($likelihood) {
+            return $code . $likelihood;
+        }
+        
+        return $code;
     }
 }
