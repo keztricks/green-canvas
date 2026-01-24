@@ -65,91 +65,42 @@ class DatabaseSeeder extends Seeder
         // Get created users for knock results
         $users = User::all();
 
-        // Create sample addresses for different streets in Skircoat ward, Halifax
+        // Create sample addresses for different streets in Wainhouse ward
         $streets = [
             [
                 'street_name' => 'Skircoat Green Road',
                 'town' => 'Halifax',
                 'constituency' => 'Halifax',
-                'houses' => ['1', '3', '5', '7', '9', '11', '13', '15', '17', '19', '21', '23', '25', '27', '29', '2', '4', '6', '8', '10', '12', '14', '16', '18', '20', '22', '24', '26', '28', '30'],
-                'postcode_prefix' => 'HX3 0A',
+                'houses' => ['253', '273', '275', '277', '279', '283', '285', '287', '287A', '289', '291', '293'],
+                'postcode_prefix' => 'HX3 0B',
             ],
             [
-                'street_name' => 'King Cross Road',
+                'street_name' => 'Upper Washer Lane',
                 'town' => 'Halifax',
                 'constituency' => 'Halifax',
-                'houses' => ['45', '47', '49', '51', '53', '55', '57', '59', '61', '63', '65', '67', '69', '71', '46', '48', '50', '52', '54', '56', '58', '60', '62', '64', '66', '68', '70'],
-                'postcode_prefix' => 'HX1 3J',
+                'houses' => ['39', '41', '43', '44', '45', '46', '47', '48', '49', '50', '52', '54', '58', '60', '62', '64', '68', '70', '76'],
+                'postcode_prefix' => 'HX2 7D',
             ],
             [
-                'street_name' => 'Free School Lane',
-                'town' => 'Halifax',
+                'street_name' => 'Wakefield Road',
+                'town' => 'Sowerby Bridge',
                 'constituency' => 'Halifax',
-                'houses' => ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25'],
-                'postcode_prefix' => 'HX1 3R',
-            ],
-            [
-                'street_name' => 'Hopwood Lane',
-                'town' => 'Halifax',
-                'constituency' => 'Halifax',
-                'houses' => ['2', '4', '6', '8', '10', '12', '14', '16', '18', '20', '22', '24', '26', '28', '30', '1', '3', '5', '7', '9', '11', '13', '15', '17', '19', '21', '23', '25', '27', '29'],
-                'postcode_prefix' => 'HX1 3T',
-            ],
-            [
-                'street_name' => "Queen's Road",
-                'town' => 'Halifax',
-                'constituency' => 'Halifax',
-                'houses' => ['25', '27', '29', '31', '33', '35', '37', '39', '41', '43', '45', '47', '49', '26', '28', '30', '32', '34', '36', '38', '40', '42', '44', '46', '48', '50'],
-                'postcode_prefix' => 'HX1 4N',
-            ],
-            [
-                'street_name' => 'Dryclough Lane',
-                'town' => 'Halifax',
-                'constituency' => 'Halifax',
-                'houses' => ['1', '3', '5', '7', '9', '11', '13', '15', '17', '19', '2', '4', '6', '8', '10', '12', '14', '16', '18', '20'],
-                'postcode_prefix' => 'HX3 9J',
-            ],
-            [
-                'street_name' => 'Savile Park Road',
-                'town' => 'Halifax',
-                'constituency' => 'Halifax',
-                'houses' => ['100', '102', '104', '106', '108', '110', '112', '114', '116', '118', '120', '122', '124', '99', '101', '103', '105', '107', '109', '111', '113', '115', '117', '119', '121', '123'],
-                'postcode_prefix' => 'HX1 3E',
+                'houses' => ['99', '231', '233', '235', '237', '239', '241', '243', '245', '247', '249'],
+                'postcode_prefix' => 'HX6 2U',
             ],
             [
                 'street_name' => 'Arden Road',
                 'town' => 'Halifax',
                 'constituency' => 'Halifax',
-                'houses' => ['10', '12', '14', '16', '18', '20', '22', '24', '26', '28', '30', '32', '34', '11', '13', '15', '17', '19', '21', '23', '25', '27', '29', '31', '33'],
+                'houses' => ['1', '3', '5', '7', '9', '11', '13', '15', '17', '19', '21', '23', '25', '2', '4', '6', '8', '10', '12', '14', '16', '18', '20', '22', '24'],
                 'postcode_prefix' => 'HX1 3A',
             ],
             [
-                'street_name' => 'Gibbet Street',
+                'street_name' => 'Washer Lane',
                 'town' => 'Halifax',
                 'constituency' => 'Halifax',
-                'houses' => ['1', '3', '5', '7', '9', '11', '13', '15', '17', '2', '4', '6', '8', '10', '12', '14', '16', '18', '20'],
-                'postcode_prefix' => 'HX1 4L',
-            ],
-            [
-                'street_name' => 'Haley Hill',
-                'town' => 'Halifax',
-                'constituency' => 'Halifax',
-                'houses' => ['50', '52', '54', '56', '58', '60', '62', '64', '66', '68', '70', '51', '53', '55', '57', '59', '61', '63', '65', '67', '69', '71'],
-                'postcode_prefix' => 'HX1 3N',
-            ],
-            [
-                'street_name' => 'Parkinson Lane',
-                'town' => 'Halifax',
-                'constituency' => 'Halifax',
-                'houses' => ['5', '7', '9', '11', '13', '15', '17', '19', '21', '6', '8', '10', '12', '14', '16', '18', '20', '22'],
-                'postcode_prefix' => 'HX1 3T',
-            ],
-            [
-                'street_name' => 'Skircoat Road',
-                'town' => 'Halifax',
-                'constituency' => 'Halifax',
-                'houses' => ['200', '202', '204', '206', '208', '210', '212', '214', '216', '218', '220', '199', '201', '203', '205', '207', '209', '211', '213', '215', '217', '219'],
-                'postcode_prefix' => 'HX3 0B',
+                'houses' => ['5', '41', 'Birch House', 'Hawthorn House'],
+                'postcode_prefix' => 'HX2 7D',
             ],
         ];
 
@@ -167,13 +118,60 @@ class DatabaseSeeder extends Seeder
 
                 // Add some knock results to a few random addresses
                 if (rand(1, 3) === 1) {
+                    // 70% chance of having a knock result
+                    $knockedDaysAgo = rand(0, 30);
+                    $response = ['green', 'labour', 'conservative', 'lib_dem', 'undecided', 'not_home', 'refused'][array_rand(['green', 'labour', 'conservative', 'lib_dem', 'undecided', 'not_home', 'refused'])];
+                    
+                    // Vote likelihood only for party responses (not for not_home or refused)
+                    $voteLikelihood = null;
+                    if (!in_array($response, ['not_home', 'refused'])) {
+                        $voteLikelihood = rand(1, 5);
+                    }
+                    
                     KnockResult::create([
                         'address_id' => $address->id,
                         'user_id' => $users->random()->id,
-                        'response' => ['green', 'labour', 'conservative', 'lib_dem', 'undecided', 'not_home', 'refused'][array_rand(['green', 'labour', 'conservative', 'lib_dem', 'undecided', 'not_home', 'refused'])],
-                        'notes' => rand(1, 2) === 1 ? null : ['Very friendly', 'Asked about climate policy', 'Concerned about local issues', 'Will consider voting'][array_rand(['Very friendly', 'Asked about climate policy', 'Concerned about local issues', 'Will consider voting'])],
-                        'knocked_at' => now()->subDays(rand(0, 7)),
+                        'response' => $response,
+                        'vote_likelihood' => $voteLikelihood,
+                        'notes' => rand(1, 3) === 1 ? null : ['Very friendly', 'Asked about climate policy', 'Concerned about local issues', 'Will consider voting', 'Wants leaflets', 'No interest', 'Busy right now'][array_rand(['Very friendly', 'Asked about climate policy', 'Concerned about local issues', 'Will consider voting', 'Wants leaflets', 'No interest', 'Busy right now'])],
+                        'knocked_at' => now()->subDays($knockedDaysAgo),
                     ]);
+                    
+                    // 30% chance of having a second historical knock result
+                    if (rand(1, 10) <= 3) {
+                        $olderResponse = ['green', 'labour', 'conservative', 'lib_dem', 'undecided', 'not_home'][array_rand(['green', 'labour', 'conservative', 'lib_dem', 'undecided', 'not_home'])];
+                        $olderVoteLikelihood = null;
+                        if (!in_array($olderResponse, ['not_home', 'refused'])) {
+                            $olderVoteLikelihood = rand(1, 5);
+                        }
+                        
+                        KnockResult::create([
+                            'address_id' => $address->id,
+                            'user_id' => $users->random()->id,
+                            'response' => $olderResponse,
+                            'vote_likelihood' => $olderVoteLikelihood,
+                            'notes' => rand(1, 2) === 1 ? null : ['Previous visit', 'Was undecided before', 'Spoke to different resident'][array_rand(['Previous visit', 'Was undecided before', 'Spoke to different resident'])],
+                            'knocked_at' => now()->subDays($knockedDaysAgo + rand(7, 60)),
+                        ]);
+                    }
+                    
+                    // 10% chance of having a third historical knock result
+                    if (rand(1, 10) === 1) {
+                        $oldestResponse = ['green', 'labour', 'conservative', 'undecided', 'not_home'][array_rand(['green', 'labour', 'conservative', 'undecided', 'not_home'])];
+                        $oldestVoteLikelihood = null;
+                        if (!in_array($oldestResponse, ['not_home', 'refused'])) {
+                            $oldestVoteLikelihood = rand(1, 5);
+                        }
+                        
+                        KnockResult::create([
+                            'address_id' => $address->id,
+                            'user_id' => $users->random()->id,
+                            'response' => $oldestResponse,
+                            'vote_likelihood' => $oldestVoteLikelihood,
+                            'notes' => rand(1, 2) === 1 ? null : ['Initial contact', 'First visit'][array_rand(['Initial contact', 'First visit'])],
+                            'knocked_at' => now()->subDays($knockedDaysAgo + rand(70, 120)),
+                        ]);
+                    }
                 }
             }
         }
