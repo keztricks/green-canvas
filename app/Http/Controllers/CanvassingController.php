@@ -96,4 +96,24 @@ class CanvassingController extends Controller
 
         return back()->with('success', 'Result deleted successfully');
     }
+
+    public function markDoNotKnock(Address $address)
+    {
+        $address->update([
+            'do_not_knock' => true,
+            'do_not_knock_at' => now(),
+        ]);
+
+        return back()->with('success', 'Address marked as Do Not Knock');
+    }
+
+    public function clearDoNotKnock(Address $address)
+    {
+        $address->update([
+            'do_not_knock' => false,
+            'do_not_knock_at' => null,
+        ]);
+
+        return back()->with('success', 'Do Not Knock status cleared');
+    }
 }
