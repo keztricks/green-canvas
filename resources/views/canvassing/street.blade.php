@@ -57,7 +57,8 @@
                                     @elseif($latestResult->response === 'lib_dem') border-orange-400
                                     @elseif($latestResult->response === 'undecided') border-yellow-500
                                     @else border-gray-400
-                                    @endif">
+                                    @endif"
+                                    @if($latestResult->response === 'reform') style="border-left-color: #17B9D1;" @endif>
                                     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
                                         <div class="flex-1">
                                             <p class="font-medium text-sm">
@@ -105,7 +106,15 @@
                                         </button>
                                         <div id="history-{{ $address->id }}" class="hidden mt-2 space-y-2">
                                             @foreach($allResults->skip(1) as $result)
-                                                <div class="p-2 bg-gray-100 rounded border-l-4 border-gray-300 text-sm">
+                                                <div class="p-2 bg-gray-100 rounded border-l-4 
+                                                    @if($result->response === 'green') border-green-500
+                                                    @elseif($result->response === 'labour') border-red-500
+                                                    @elseif($result->response === 'conservative') border-blue-500
+                                                    @elseif($result->response === 'lib_dem') border-orange-400
+                                                    @elseif($result->response === 'undecided') border-yellow-500
+                                                    @else border-gray-400
+                                                    @endif text-sm"
+                                                    @if($result->response === 'reform') style="border-left-color: #17B9D1;" @endif>
                                                     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
                                                         <div class="flex-1">
                                                             <p class="font-medium">{{ $responseOptions[$result->response] }}
