@@ -28,8 +28,8 @@ class CanvassingController extends Controller
         // Get all unique streets in this ward with address counts
         $streets = Address::byWard($wardId)
             ->select('street_name', 'town')
-            ->selectRaw('COUNT(*) as address_count')
-            ->selectRaw('COUNT(DISTINCT knock_results.id) as knocked_count')
+            ->selectRaw('COUNT(DISTINCT addresses.id) as address_count')
+            ->selectRaw('COUNT(DISTINCT CASE WHEN knock_results.id IS NOT NULL THEN addresses.id END) as knocked_count')
             ->leftJoin('knock_results', 'addresses.id', '=', 'knock_results.address_id')
             ->groupBy('street_name', 'town')
             ->orderBy('street_name')
