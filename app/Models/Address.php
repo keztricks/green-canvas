@@ -15,6 +15,13 @@ class Address extends Model
         'postcode',
         'constituency',
         'sort_order',
+        'do_not_knock',
+        'do_not_knock_at',
+    ];
+
+    protected $casts = [
+        'do_not_knock' => 'boolean',
+        'do_not_knock_at' => 'datetime',
     ];
 
     public function ward()

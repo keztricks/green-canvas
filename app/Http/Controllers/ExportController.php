@@ -37,13 +37,15 @@ class ExportController extends Controller
             'notes' => 'nullable|string|max:500',
         ]);
 
-        // Get all knock results with address information
-        $results = KnockResult::with('address')
+        // Get all knock results grouped by address
+        $results = KnockResult::with(['address', 'user'])
             ->join('addresses', 'knock_results.address_id', '=', 'addresses.id')
             ->orderBy('addresses.street_name')
             ->orderBy('addresses.sort_order')
+            ->orderBy('knock_results.knocked_at', 'desc')
             ->select('knock_results.*')
-            ->get();
+            ->get()
+            ->groupBy('address_id');
 
         if ($results->isEmpty()) {
             return redirect()->route('exports.index')
@@ -59,16 +61,19 @@ class ExportController extends Controller
         // Save to storage
         Storage::disk('local')->put('exports/' . $filename, $csvContent);
 
+        // Count total records
+        $totalRecords = $results->flatten()->count();
+
         // Track the export
         Export::create([
             'filename' => $filename,
-            'record_count' => $results->count(),
+            'record_count' => $totalRecords,
             'version' => $validated['version'],
             'notes' => $validated['notes'],
         ]);
 
         return redirect()->route('exports.index')
-            ->with('success', "Export {$validated['version']} created successfully with {$results->count()} records");
+            ->with('success', "Export {$validated['version']} created successfully with {$totalRecords} records");
     }
 
     public function download(Export $export)
@@ -97,7 +102,7 @@ class ExportController extends Controller
             ->with('success', 'Export deleted successfully');
     }
 
-    private function generateCSV($results)
+    private function generateCSV($groupedResults)
     {
         $csv = [];
         
@@ -108,27 +113,48 @@ class ExportController extends Controller
             'Street Name',
             'Town',
             'Postcode',
-            'Intention',
+            'Latest Intention',
             'Notes',
             'User',
             'Knocked At',
+            'History Count',
+            'Previous Results',
         ];
 
-        // Data rows
-        foreach ($results as $result) {
-            // Format intention as party code + likelihood
-            $intention = $this->formatIntention($result->response, $result->vote_likelihood);
+        // Data rows - one row per address with all historical data
+        foreach ($groupedResults as $addressId => $results) {
+            $latestResult = $results->first(); // Most recent
+            $address = $latestResult->address;
+            
+            // Format latest intention
+            $latestIntention = $this->formatIntention($latestResult->response, $latestResult->vote_likelihood);
+            
+            // Build history string for previous results
+            $historyCount = $results->count() - 1;
+            $previousResults = [];
+            
+            foreach ($results->skip(1) as $historicResult) {
+                $historicIntention = $this->formatIntention($historicResult->response, $historicResult->vote_likelihood);
+                $previousResults[] = sprintf(
+                    '%s (%s, %s)',
+                    $historicIntention,
+                    $historicResult->knocked_at->format('d/m/Y'),
+                    $historicResult->user?->name ?? 'Unknown'
+                );
+            }
             
             $csv[] = [
                 now()->format('Y-m-d H:i:s'),
-                $result->address->house_number,
-                $result->address->street_name,
-                $result->address->town,
-                $result->address->postcode,
-                $intention,
-                $result->notes ?? '',
-                $result->user?->name ?? '',
-                $result->knocked_at->format('Y-m-d H:i:s'),
+                $address->house_number,
+                $address->street_name,
+                $address->town,
+                $address->postcode,
+                $latestIntention,
+                $latestResult->notes ?? '',
+                $latestResult->user?->name ?? '',
+                $latestResult->knocked_at->format('Y-m-d H:i:s'),
+                $historyCount,
+                implode(' | ', $previousResults),
             ];
         }
 
