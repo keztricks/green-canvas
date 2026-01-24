@@ -45,7 +45,7 @@ class CanvassingController extends Controller
         $addresses = Address::byWard($wardId)
             ->byStreet($streetName)
             ->with(['knockResults' => function($query) {
-                $query->latest('knocked_at');
+                $query->with('user')->latest('knocked_at');
             }])
             ->get();
 
@@ -75,5 +75,25 @@ class CanvassingController extends Controller
         KnockResult::create($validated);
 
         return back()->with('success', 'Result recorded successfully');
+    }
+
+    public function update(Request $request, KnockResult $knockResult)
+    {
+        $validated = $request->validate([
+            'response' => 'required|in:not_home,conservative,labour,lib_dem,green,reform,your_party,undecided,refused,other',
+            'vote_likelihood' => 'nullable|integer|min:1|max:5',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $knockResult->update($validated);
+
+        return back()->with('success', 'Result updated successfully');
+    }
+
+    public function destroy(KnockResult $knockResult)
+    {
+        $knockResult->delete();
+
+        return back()->with('success', 'Result deleted successfully');
     }
 }

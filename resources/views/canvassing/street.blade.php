@@ -17,8 +17,10 @@
         <div class="space-y-4">
             @foreach($addresses as $address)
                 @php
-                    $latestResult = $address->knockResults->first();
+                    $allResults = $address->knockResults;
+                    $latestResult = $allResults->first();
                     $hasResult = $latestResult !== null;
+                    $hasHistory = $allResults->count() > 1;
                 @endphp
 
                 <div class="border rounded-lg p-4 {{ $hasResult ? 'bg-gray-50 border-gray-300' : 'bg-white border-gray-200' }}">
@@ -38,30 +40,193 @@
                                     @elseif($latestResult->response === 'undecided') border-yellow-500
                                     @else border-gray-400
                                     @endif">
-                                    <p class="font-medium text-sm">
-                                        Last result: <span class="font-bold">{{ $responseOptions[$latestResult->response] }}</span>
-                                    </p>
-                                    @if($latestResult->vote_likelihood)
-                                        <p class="text-sm text-gray-700 mt-1">
-                                            Vote likelihood: <span class="font-semibold">{{ $latestResult->vote_likelihood }}/5</span>
-                                        </p>
-                                    @endif
-                                    @if($latestResult->notes)
-                                        <p class="text-sm text-gray-600 mt-1">{{ $latestResult->notes }}</p>
-                                    @endif
-                                    <p class="text-xs text-gray-500 mt-1">
-                                        {{ $latestResult->knocked_at->diffForHumans() }}
-                                        @if($latestResult->user)
-                                            by {{ $latestResult->user->name }}
-                                        @endif
-                                    </p>
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex-1">
+                                            <p class="font-medium text-sm">
+                                                Latest: <span class="font-bold">{{ $responseOptions[$latestResult->response] }}</span>
+                                            </p>
+                                            @if($latestResult->vote_likelihood)
+                                                <p class="text-sm text-gray-700 mt-1">
+                                                    Vote likelihood: <span class="font-semibold">{{ $latestResult->vote_likelihood }}/5</span>
+                                                </p>
+                                            @endif
+                                            @if($latestResult->notes)
+                                                <p class="text-sm text-gray-600 mt-1">{{ $latestResult->notes }}</p>
+                                            @endif
+                                            <p class="text-xs text-gray-500 mt-1">
+                                                {{ $latestResult->knocked_at->diffForHumans() }}
+                                                @if($latestResult->user)
+                                                    by {{ $latestResult->user->name }}
+                                                @endif
+                                            </p>
+                                        </div>
+                                        <div class="flex space-x-1 ml-2">
+                                            <button onclick="toggleEditForm({{ $latestResult->id }})" 
+                                                    class="text-blue-600 hover:text-blue-800 text-xs px-2 py-1">
+                                                Edit
+                                            </button>
+                                            <form action="{{ route('knock-result.destroy', $latestResult) }}" 
+                                                  method="POST" 
+                                                  onsubmit="return confirm('Are you sure you want to delete this result?')"
+                                                  class="inline">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-red-600 hover:text-red-800 text-xs px-2 py-1">
+                                                    Delete
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
                                 </div>
+
+                                @if($hasHistory)
+                                    <div class="mt-2">
+                                        <button onclick="toggleHistory({{ $address->id }})" 
+                                                class="text-sm text-gray-600 hover:text-gray-800 underline">
+                                            Show history ({{ $allResults->count() - 1 }} previous)
+                                        </button>
+                                        <div id="history-{{ $address->id }}" class="hidden mt-2 space-y-2">
+                                            @foreach($allResults->skip(1) as $result)
+                                                <div class="p-2 bg-gray-100 rounded border-l-4 border-gray-300 text-sm">
+                                                    <div class="flex justify-between items-start">
+                                                        <div class="flex-1">
+                                                            <p class="font-medium">{{ $responseOptions[$result->response] }}
+                                                                @if($result->vote_likelihood)
+                                                                    <span class="text-gray-600">({{ $result->vote_likelihood }}/5)</span>
+                                                                @endif
+                                                            </p>
+                                                            @if($result->notes)
+                                                                <p class="text-gray-600 mt-1">{{ $result->notes }}</p>
+                                                            @endif
+                                                            <p class="text-xs text-gray-500 mt-1">
+                                                                {{ $result->knocked_at->format('d/m/Y H:i') }}
+                                                                @if($result->user)
+                                                                    by {{ $result->user->name }}
+                                                                @endif
+                                                            </p>
+                                                        </div>
+                                                        <div class="flex space-x-1 ml-2">
+                                                            <button onclick="toggleEditForm({{ $result->id }})" 
+                                                                    class="text-blue-600 hover:text-blue-800 text-xs px-2 py-1">
+                                                                Edit
+                                                            </button>
+                                                            <form action="{{ route('knock-result.destroy', $result) }}" 
+                                                                  method="POST" 
+                                                                  onsubmit="return confirm('Are you sure you want to delete this result?')"
+                                                                  class="inline">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="text-red-600 hover:text-red-800 text-xs px-2 py-1">
+                                                                    Delete
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <!-- Edit form for this result -->
+                                                    <form id="edit-form-{{ $result->id }}" 
+                                                          action="{{ route('knock-result.update', $result) }}" 
+                                                          method="POST" 
+                                                          class="hidden mt-3 space-y-2 border-t pt-2">
+                                                        @csrf
+                                                        @method('PUT')
+                                                        
+                                                        <div>
+                                                            <label class="block text-xs font-medium text-gray-700 mb-1">Voting Intention</label>
+                                                            <select name="response" required class="w-full border border-gray-300 rounded px-2 py-1 text-xs">
+                                                                @foreach($responseOptions as $value => $label)
+                                                                    <option value="{{ $value }}" {{ $result->response === $value ? 'selected' : '' }}>
+                                                                        {{ $label }}
+                                                                    </option>
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
+
+                                                        <div>
+                                                            <label class="block text-xs font-medium text-gray-700 mb-1">Vote Likelihood</label>
+                                                            <select name="vote_likelihood" class="w-full border border-gray-300 rounded px-2 py-1 text-xs">
+                                                                <option value="">Not specified</option>
+                                                                @for($i = 1; $i <= 5; $i++)
+                                                                    <option value="{{ $i }}" {{ $result->vote_likelihood == $i ? 'selected' : '' }}>
+                                                                        {{ $i }}
+                                                                    </option>
+                                                                @endfor
+                                                            </select>
+                                                        </div>
+
+                                                        <div>
+                                                            <label class="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+                                                            <textarea name="notes" rows="2" class="w-full border border-gray-300 rounded px-2 py-1 text-xs">{{ $result->notes }}</textarea>
+                                                        </div>
+
+                                                        <div class="flex space-x-2">
+                                                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">
+                                                                Save
+                                                            </button>
+                                                            <button type="button" onclick="toggleEditForm({{ $result->id }})" 
+                                                                    class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-3 py-1 rounded text-xs">
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
+                                <!-- Edit form for latest result -->
+                                <form id="edit-form-{{ $latestResult->id }}" 
+                                      action="{{ route('knock-result.update', $latestResult) }}" 
+                                      method="POST" 
+                                      class="hidden mt-3 space-y-2 border-t pt-3">
+                                    @csrf
+                                    @method('PUT')
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Voting Intention</label>
+                                        <select name="response" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+                                            @foreach($responseOptions as $value => $label)
+                                                <option value="{{ $value }}" {{ $latestResult->response === $value ? 'selected' : '' }}>
+                                                    {{ $label }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Vote Likelihood</label>
+                                        <select name="vote_likelihood" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+                                            <option value="">Not specified</option>
+                                            @for($i = 1; $i <= 5; $i++)
+                                                <option value="{{ $i }}" {{ $latestResult->vote_likelihood == $i ? 'selected' : '' }}>
+                                                    {{ $i }}
+                                                </option>
+                                            @endfor
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                                        <textarea name="notes" rows="2" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">{{ $latestResult->notes }}</textarea>
+                                    </div>
+
+                                    <div class="flex space-x-2">
+                                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                                            Update Result
+                                        </button>
+                                        <button type="button" onclick="toggleEditForm({{ $latestResult->id }})" 
+                                                class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </form>
                             @endif
                         </div>
 
                         <button onclick="toggleForm({{ $address->id }})" 
                                 class="ml-4 bg-[#6AB023] hover:bg-[#5a9620] text-white px-4 py-2 rounded">
-                            {{ $hasResult ? 'Update' : 'Record' }}
+                            {{ $hasResult ? 'New' : 'Record' }}
                         </button>
                     </div>
 
@@ -128,6 +293,26 @@
 function toggleForm(addressId) {
     const form = document.getElementById(`form-${addressId}`);
     form.classList.toggle('hidden');
+}
+
+function toggleEditForm(resultId) {
+    const editForm = document.getElementById(`edit-form-${resultId}`);
+    editForm.classList.toggle('hidden');
+}
+
+function toggleHistory(addressId) {
+    const history = document.getElementById(`history-${addressId}`);
+    const button = event.target;
+    
+    if (history.classList.contains('hidden')) {
+        history.classList.remove('hidden');
+        const count = button.textContent.match(/\d+/)[0];
+        button.textContent = 'Hide history';
+    } else {
+        history.classList.add('hidden');
+        const count = history.querySelectorAll('.p-2').length;
+        button.textContent = `Show history (${count} previous)`;
+    }
 }
 
 function updateVoteLikelihood(radio) {
