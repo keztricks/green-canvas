@@ -15,9 +15,11 @@
                     <x-nav-link :href="route('canvassing.index')" :active="request()->routeIs('canvassing.*')" class="text-white hover:text-gray-200">
                         {{ __('Streets') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('import.index')" :active="request()->routeIs('import.*')" class="text-white hover:text-gray-200">
-                        {{ __('Import') }}
-                    </x-nav-link>
+                    @if(auth()->user()->isAdmin())
+                        <x-nav-link :href="route('import.index')" :active="request()->routeIs('import.*')" class="text-white hover:text-gray-200">
+                            {{ __('Import') }}
+                        </x-nav-link>
+                    @endif
                     <x-nav-link :href="route('exports.index')" :active="request()->routeIs('exports.*')" class="text-white hover:text-gray-200">
                         {{ __('Exports') }}
                     </x-nav-link>
@@ -81,9 +83,11 @@
             <x-responsive-nav-link :href="route('canvassing.index')" :active="request()->routeIs('canvassing.*')">
                 {{ __('Streets') }}
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('import.index')" :active="request()->routeIs('import.*')">
-                {{ __('Import') }}
-            </x-responsive-nav-link>
+            @if(auth()->user()->isAdmin())
+                <x-responsive-nav-link :href="route('import.index')" :active="request()->routeIs('import.*')">
+                    {{ __('Import') }}
+                </x-responsive-nav-link>
+            @endif
             <x-responsive-nav-link :href="route('exports.index')" :active="request()->routeIs('exports.*')">
                 {{ __('Exports') }}
             </x-responsive-nav-link>

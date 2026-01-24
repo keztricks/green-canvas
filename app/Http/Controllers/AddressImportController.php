@@ -12,6 +12,10 @@ class AddressImportController extends Controller
 {
     public function index()
     {
+        if (!auth()->user()->isAdmin()) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $addressCount = Address::count();
         $wards = Ward::active()->orderBy('name')->get();
         return view('import.index', compact('addressCount', 'wards'));
@@ -62,6 +66,10 @@ class AddressImportController extends Controller
 
     public function store(Request $request)
     {
+        if (!auth()->user()->isAdmin()) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $request->validate([
             'ward_id' => 'required|exists:wards,id',
             'csv_file' => 'required|file|mimes:csv,txt|max:10240',
@@ -302,6 +310,10 @@ class AddressImportController extends Controller
 
     public function clear()
     {
+        if (!auth()->user()->isAdmin()) {
+            abort(403, 'Unauthorized action.');
+        }
+
         Address::truncate();
         
         return redirect()->route('import.index')
