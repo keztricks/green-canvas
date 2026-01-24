@@ -13,7 +13,7 @@
                 <!-- Navigation Links -->
                 <div class="hidden space-x-4 sm:-my-px sm:ms-6 sm:flex">
                     <x-nav-link :href="route('canvassing.index')" :active="request()->routeIs('canvassing.*')" class="text-white hover:text-gray-200">
-                        {{ __('Streets') }}
+                        {{ __('Canvas') }}
                     </x-nav-link>
                     @if(auth()->user()->isAdmin())
                         <x-nav-link :href="route('import.index')" :active="request()->routeIs('import.*')" class="text-white hover:text-gray-200">
@@ -81,7 +81,7 @@
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('canvassing.index')" :active="request()->routeIs('canvassing.*')">
-                {{ __('Streets') }}
+                {{ __('Canvas') }}
             </x-responsive-nav-link>
             @if(auth()->user()->isAdmin())
                 <x-responsive-nav-link :href="route('import.index')" :active="request()->routeIs('import.*')">
