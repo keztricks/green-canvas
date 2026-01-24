@@ -23,10 +23,28 @@
                     $hasHistory = $allResults->count() > 1;
                 @endphp
 
-                <div class="border rounded-lg p-4 {{ $hasResult ? 'bg-gray-50 border-gray-300' : 'bg-white border-gray-200' }}">
+                <div class="border rounded-lg p-4 {{ $address->do_not_knock ? 'bg-red-50 border-red-500 border-2' : ($hasResult ? 'bg-gray-50 border-gray-300' : 'bg-white border-gray-200') }}">
+                    @if($address->do_not_knock)
+                        <div class="mb-3 p-3 bg-red-100 border-l-4 border-red-500 rounded">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <p class="font-bold text-red-800 text-sm">⚠️ DO NOT KNOCK</p>
+                                    <p class="text-xs text-red-700 mt-1">Marked on {{ $address->do_not_knock_at->format('d/m/Y H:i') }}</p>
+                                </div>
+                                <form action="{{ route('address.clear-do-not-knock', $address) }}" method="POST" onsubmit="return confirm('Are you sure you want to clear the Do Not Knock status?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs">
+                                        Clear
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="flex justify-between items-start">
                         <div class="flex-1">
-                            <h3 class="text-lg font-semibold text-gray-800">
+                            <h3 class="text-lg font-semibold {{ $address->do_not_knock ? 'text-red-800' : 'text-gray-800' }}">
                                 {{ $address->house_number }} {{ $address->street_name }}
                             </h3>
                             <p class="text-sm text-gray-600">{{ $address->postcode }}</p>
@@ -224,10 +242,20 @@
                             @endif
                         </div>
 
-                        <button onclick="toggleForm({{ $address->id }})" 
-                                class="ml-4 bg-[#6AB023] hover:bg-[#5a9620] text-white px-4 py-2 rounded">
-                            {{ $hasResult ? 'New' : 'Record' }}
-                        </button>
+                        <div class="ml-4 flex flex-col gap-2">
+                            @if(!$address->do_not_knock)
+                                <button onclick="toggleForm({{ $address->id }})" 
+                                        class="bg-[#6AB023] hover:bg-[#5a9620] text-white px-4 py-2 rounded">
+                                    {{ $hasResult ? 'New' : 'Record' }}
+                                </button>
+                                <form action="{{ route('address.mark-do-not-knock', $address) }}" method="POST" onsubmit="return confirm('Are you sure you want to mark this address as Do Not Knock?')">
+                                    @csrf
+                                    <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm">
+                                        DNK
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
                     </div>
 
                     <form id="form-{{ $address->id }}" 
