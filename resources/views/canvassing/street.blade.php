@@ -23,7 +23,7 @@
                     $hasHistory = $allResults->count() > 1;
                 @endphp
 
-                <div class="border rounded-lg p-4 {{ $address->do_not_knock ? 'bg-red-50 border-red-500 border-2' : ($hasResult ? 'bg-gray-50 border-gray-300' : 'bg-white border-gray-200') }}">
+                <div id="address-{{ $address->id }}" class="border rounded-lg p-4 {{ $address->do_not_knock ? 'bg-red-50 border-red-500 border-2' : ($hasResult ? 'bg-gray-50 border-gray-300' : 'bg-white border-gray-200') }}">
                     @if($address->do_not_knock)
                         <div class="mb-3 p-3 bg-red-100 border-l-4 border-red-500 rounded">
                             <div class="flex justify-between items-center">

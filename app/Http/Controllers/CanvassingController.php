@@ -74,7 +74,7 @@ class CanvassingController extends Controller
         
         KnockResult::create($validated);
 
-        return back()->with('success', 'Result recorded successfully');
+        return back()->with('success', 'Result recorded successfully')->withFragment('address-' . $validated['address_id']);
     }
 
     public function update(Request $request, KnockResult $knockResult)
