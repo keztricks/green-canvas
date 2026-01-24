@@ -58,7 +58,7 @@
                                     @elseif($latestResult->response === 'undecided') border-yellow-500
                                     @else border-gray-400
                                     @endif">
-                                    <div class="flex justify-between items-start">
+                                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
                                         <div class="flex-1">
                                             <p class="font-medium text-sm">
                                                 Latest: <span class="font-bold">{{ $responseOptions[$latestResult->response] }}</span>
@@ -78,9 +78,9 @@
                                                 @endif
                                             </p>
                                         </div>
-                                        <div class="flex space-x-1 ml-2">
+                                        <div class="flex space-x-2 sm:space-x-1 sm:ml-2">
                                             <button onclick="toggleEditForm({{ $latestResult->id }})" 
-                                                    class="text-blue-600 hover:text-blue-800 text-xs px-2 py-1">
+                                                    class="text-blue-600 hover:text-blue-800 text-xs px-3 py-1 sm:px-2 border border-blue-600 rounded sm:border-0">
                                                 Edit
                                             </button>
                                             <form action="{{ route('knock-result.destroy', $latestResult) }}" 
@@ -89,7 +89,7 @@
                                                   class="inline">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="text-red-600 hover:text-red-800 text-xs px-2 py-1">
+                                                <button type="submit" class="text-red-600 hover:text-red-800 text-xs px-3 py-1 sm:px-2 border border-red-600 rounded sm:border-0">
                                                     Delete
                                                 </button>
                                             </form>
@@ -106,7 +106,7 @@
                                         <div id="history-{{ $address->id }}" class="hidden mt-2 space-y-2">
                                             @foreach($allResults->skip(1) as $result)
                                                 <div class="p-2 bg-gray-100 rounded border-l-4 border-gray-300 text-sm">
-                                                    <div class="flex justify-between items-start">
+                                                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
                                                         <div class="flex-1">
                                                             <p class="font-medium">{{ $responseOptions[$result->response] }}
                                                                 @if($result->vote_likelihood)
@@ -123,9 +123,9 @@
                                                                 @endif
                                                             </p>
                                                         </div>
-                                                        <div class="flex space-x-1 ml-2">
+                                                        <div class="flex space-x-2 sm:space-x-1 sm:ml-2">
                                                             <button onclick="toggleEditForm({{ $result->id }})" 
-                                                                    class="text-blue-600 hover:text-blue-800 text-xs px-2 py-1">
+                                                                    class="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 border border-blue-600 rounded sm:border-0">
                                                                 Edit
                                                             </button>
                                                             <form action="{{ route('knock-result.destroy', $result) }}" 
@@ -134,7 +134,7 @@
                                                                   class="inline">
                                                                 @csrf
                                                                 @method('DELETE')
-                                                                <button type="submit" class="text-red-600 hover:text-red-800 text-xs px-2 py-1">
+                                                                <button type="submit" class="text-red-600 hover:text-red-800 text-xs px-2 py-1 border border-red-600 rounded sm:border-0">
                                                                     Delete
                                                                 </button>
                                                             </form>
