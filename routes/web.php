@@ -25,6 +25,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/ward/{ward}', [CanvassingController::class, 'ward'])->name('canvassing.ward');
     Route::get('/ward/{ward}/street/{streetName}', [CanvassingController::class, 'street'])->name('canvassing.street');
     Route::post('/knock-result', [CanvassingController::class, 'store'])->name('knock-result.store');
+    Route::put('/knock-result/{knockResult}', [CanvassingController::class, 'update'])->name('knock-result.update');
+    Route::delete('/knock-result/{knockResult}', [CanvassingController::class, 'destroy'])->name('knock-result.destroy');
 
     // Export routes
     Route::get('/exports', [ExportController::class, 'index'])->name('exports.index');
