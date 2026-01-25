@@ -48,6 +48,7 @@
                         </label>
                         <select name="type" 
                                 required
+                                id="election-type"
                                 class="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#6AB023]">
                             <option value="general" {{ old('type') == 'general' ? 'selected' : '' }}>General Election</option>
                             <option value="local" {{ old('type') == 'local' ? 'selected' : '' }}>Local Election</option>
@@ -55,6 +56,27 @@
                             <option value="other" {{ old('type') == 'other' ? 'selected' : '' }}>Other</option>
                         </select>
                         @error('type')
+                            <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div id="ward-selection" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Wards (optional)
+                        </label>
+                        <div class="border border-gray-300 rounded px-4 py-3 max-h-60 overflow-y-auto space-y-2">
+                            @foreach($wards as $ward)
+                                <label class="flex items-center">
+                                    <input type="checkbox" 
+                                           name="ward_ids[]" 
+                                           value="{{ $ward->id }}"
+                                           {{ in_array($ward->id, old('ward_ids', [])) ? 'checked' : '' }}
+                                           class="rounded border-gray-300 text-[#6AB023] focus:ring-[#6AB023]">
+                                    <span class="ml-2 text-sm text-gray-700">{{ $ward->name }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                        @error('ward_ids')
                             <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                         @enderror
                     </div>
@@ -73,4 +95,23 @@
             </div>
         </div>
     </div>
+
+    <script>
+        document.getElementById('election-type').addEventListener('change', function() {
+            const wardSelection = document.getElementById('ward-selection');
+            if (this.value === 'local' || this.value === 'by-election') {
+                wardSelection.classList.remove('hidden');
+            } else {
+                wardSelection.classList.add('hidden');
+            }
+        });
+
+        // Show on page load if type is already selected
+        document.addEventListener('DOMContentLoaded', function() {
+            const type = document.getElementById('election-type').value;
+            if (type === 'local' || type === 'by-election') {
+                document.getElementById('ward-selection').classList.remove('hidden');
+            }
+        });
+    </script>
 </x-app-layout>

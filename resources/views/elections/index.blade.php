@@ -30,6 +30,7 @@
                                     <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
                                     <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date</th>
                                     <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Type</th>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Wards</th>
                                     <th class="px-4 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
                                 </tr>
                             </thead>
@@ -46,6 +47,13 @@
                                             <span class="px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
                                                 {{ ucfirst($election->type) }}
                                             </span>
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-gray-600">
+                                            @if($election->wards->isNotEmpty())
+                                                {{ $election->wards->pluck('name')->join(', ') }}
+                                            @else
+                                                <span class="text-gray-400">All wards</span>
+                                            @endif
                                         </td>
                                         <td class="px-4 py-3 text-right">
                                             <form action="{{ route('elections.destroy', $election) }}" 

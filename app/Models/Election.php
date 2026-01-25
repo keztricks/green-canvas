@@ -27,4 +27,9 @@ class Election extends Model
             ->withPivot('voted', 'notes')
             ->withTimestamps();
     }
+
+    public function wards()
+    {
+        return $this->belongsToMany(Ward::class);
+    }
 }

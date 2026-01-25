@@ -17,6 +17,11 @@ class Ward extends Model
         return $this->hasMany(Address::class);
     }
 
+    public function elections()
+    {
+        return $this->belongsToMany(Election::class);
+    }
+
     public function scopeActive($query)
     {
         return $query->where('active', true);
