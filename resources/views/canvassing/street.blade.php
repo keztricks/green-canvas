@@ -288,11 +288,11 @@
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Vote Likelihood (optional)</label>
-                            <div class="flex gap-3">
+                            <div class="flex gap-2 sm:gap-3">
                                 @for($i = 1; $i <= 5; $i++)
-                                    <label class="flex items-center justify-center bg-white border-gray-400 rounded-lg hover:border-[#6AB023] cursor-pointer transition-all shadow-sm vote-likelihood-option" style="min-width: 64px; width: 64px; height: 64px; border-width: 3px;">
+                                    <label class="flex items-center justify-center bg-white border-gray-400 rounded-lg hover:border-[#6AB023] cursor-pointer transition-all shadow-sm vote-likelihood-option flex-1" style="max-width: 64px; height: 56px; border-width: 3px;">
                                         <input type="radio" name="vote_likelihood" value="{{ $i }}" class="sr-only" onchange="updateVoteLikelihood(this)">
-                                        <span class="text-2xl font-semibold text-gray-700">{{ $i }}</span>
+                                        <span class="text-xl sm:text-2xl font-semibold text-gray-700">{{ $i }}</span>
                                     </label>
                                 @endfor
                             </div>
