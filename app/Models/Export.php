@@ -11,5 +11,21 @@ class Export extends Model
         'record_count',
         'version',
         'notes',
+        'ward_id',
+        'date_from',
+        'date_to',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'date_from' => 'date',
+            'date_to' => 'date',
+        ];
+    }
+
+    public function ward()
+    {
+        return $this->belongsTo(Ward::class);
+    }
 }

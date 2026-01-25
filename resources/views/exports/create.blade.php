@@ -13,7 +13,7 @@
         <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded">
             <h3 class="font-semibold text-blue-900 mb-2">Export Information</h3>
             <p class="text-sm text-blue-800">
-                This will export <strong>{{ number_format($totalResults) }}</strong> knock results to a CSV file.
+                This will export <strong>{{ number_format($totalResults) }}</strong> knock results.
                 Each export is versioned so you can track changes over time.
             </p>
         </div>
@@ -37,6 +37,65 @@
                 <p class="text-xs text-gray-500 mt-1">
                     Version must be unique. Suggested: <strong>{{ $nextVersion }}</strong>
                 </p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Format <span class="text-red-600">*</span>
+                </label>
+                <div class="flex gap-4">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="radio" name="format" value="csv" checked required class="text-[#6AB023]">
+                        <span class="text-sm">CSV (Comma-Separated Values)</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="radio" name="format" value="xlsx" required class="text-[#6AB023]">
+                        <span class="text-sm">XLSX (Excel Spreadsheet)</span>
+                    </label>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">
+                    CSV is compatible with most applications. XLSX provides better formatting in Excel.
+                </p>
+            </div>
+
+            <div class="border-t pt-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Optional Filters</h3>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Ward
+                        </label>
+                        <select name="ward_id" class="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#6AB023]">
+                            <option value="">All Wards</option>
+                            @foreach($wards as $ward)
+                                <option value="{{ $ward->id }}">{{ $ward->name }}</option>
+                            @endforeach
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Filter results by a specific ward</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Date From
+                            </label>
+                            <input type="date" 
+                                   name="date_from" 
+                                   class="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#6AB023]">
+                            <p class="text-xs text-gray-500 mt-1">Start of date range</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Date To
+                            </label>
+                            <input type="date" 
+                                   name="date_to" 
+                                   class="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#6AB023]">
+                            <p class="text-xs text-gray-500 mt-1">End of date range</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div>
