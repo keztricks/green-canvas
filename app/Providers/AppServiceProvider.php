@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Auth\Events\Login;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -26,6 +28,12 @@ class AppServiceProvider extends ServiceProvider
                 ->letters()
                 ->mixedCase()
                 ->numbers();
+        });
+
+        // Update last login timestamp on login
+        Event::listen(Login::class, function (Login $event) {
+            $event->user->last_login_at = now();
+            $event->user->save();
         });
     }
 }
