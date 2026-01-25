@@ -21,15 +21,16 @@
                     $latestResult = $allResults->first();
                     $hasResult = $latestResult !== null;
                     $hasHistory = $allResults->count() > 1;
+                    $isNeverVoter = $latestResult && $latestResult->vote_likelihood == 5;
                 @endphp
 
-                <div id="address-{{ $address->id }}" class="border rounded-lg p-4 {{ $address->do_not_knock ? 'bg-red-50 border-red-500 border-2' : ($hasResult ? 'bg-gray-50 border-gray-300' : 'bg-white border-gray-200') }}">
+                <div id="address-{{ $address->id }}" class="border rounded-lg p-4 {{ ($address->do_not_knock || $isNeverVoter) ? 'bg-red-50 border-red-500 border-2' : ($hasResult ? 'bg-gray-50 border-gray-300' : 'bg-white border-gray-200') }}">
                     @if($address->do_not_knock)
                         <div class="mb-3 p-3 bg-red-100 border-l-4 border-red-500 rounded">
                             <div class="flex justify-between items-center">
                                 <div>
                                     <p class="font-bold text-red-800 text-sm">⚠️ DO NOT KNOCK</p>
-                                    <p class="text-xs text-red-700 mt-1">Marked on {{ $address->do_not_knock_at->format('d/m/Y H:i') }}</p>
+                                    <p class="text-xs text-red-700 mt-1">Marked on {{ $address->do_not_knock_at->format('d/m/Y') }}</p>
                                 </div>
                                 <form action="{{ route('address.clear-do-not-knock', $address) }}" method="POST" onsubmit="return confirm('Are you sure you want to clear the Do Not Knock status?')">
                                     @csrf
@@ -40,11 +41,16 @@
                                 </form>
                             </div>
                         </div>
+                    @elseif($isNeverVoter)
+                        <div class="mb-3 p-3 bg-red-100 border-l-4 border-red-500 rounded">
+                            <p class="font-bold text-red-800 text-sm">💔 NEVER VOTING GREEN</p>
+                            <p class="text-xs text-red-700 mt-1">Vote likelihood: 5 (Never) - Recorded {{ $latestResult->knocked_at->diffForHumans() }}</p>
+                        </div>
                     @endif
 
                     <div class="flex justify-between items-start">
                         <div class="flex-1">
-                            <h3 class="text-lg font-semibold {{ $address->do_not_knock ? 'text-red-800' : 'text-gray-800' }}">
+                            <h3 class="text-lg font-semibold {{ ($address->do_not_knock || $isNeverVoter) ? 'text-red-800' : 'text-gray-800' }}">
                                 {{ $address->house_number }} {{ $address->street_name }}
                             </h3>
                             <p class="text-sm text-gray-600">{{ $address->postcode }}</p>
@@ -84,7 +90,12 @@
                                             </p>
                                             @if($latestResult->vote_likelihood)
                                                 <p class="text-sm text-gray-700 mt-1">
-                                                    Vote likelihood: <span class="font-semibold">{{ $latestResult->vote_likelihood }}/5</span>
+                                                    Green support: <span class="font-semibold">{{ $latestResult->vote_likelihood }}/5</span>
+                                                    @if($latestResult->vote_likelihood == 1)
+                                                        <span class="text-xs text-green-600">(Definitely)</span>
+                                                    @elseif($latestResult->vote_likelihood == 5)
+                                                        <span class="text-xs text-red-600">(Never)</span>
+                                                    @endif
                                                 </p>
                                             @endif
                                             @if($latestResult->notes)
@@ -188,7 +199,7 @@
                                                         </div>
 
                                                         <div>
-                                                            <label class="block text-xs font-medium text-gray-700 mb-1">Vote Likelihood</label>
+                                                            <label class="block text-xs font-medium text-gray-700 mb-1">Green Support (1=Def, 5=Never)</label>
                                                             <select name="vote_likelihood" class="w-full border border-gray-300 rounded px-2 py-1 text-xs">
                                                                 <option value="">Not specified</option>
                                                                 @for($i = 1; $i <= 5; $i++)
@@ -240,7 +251,7 @@
                                     </div>
 
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Vote Likelihood</label>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Green Party Support (1=Definitely, 5=Never)</label>
                                         <select name="vote_likelihood" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
                                             <option value="">Not specified</option>
                                             @for($i = 1; $i <= 5; $i++)
@@ -270,7 +281,7 @@
                         </div>
 
                         <div class="ml-4 flex flex-col gap-2">
-                            @if(!$address->do_not_knock)
+                            @if(!$address->do_not_knock && !$isNeverVoter)
                                 <button onclick="toggleForm({{ $address->id }})" 
                                         class="bg-[#6AB023] hover:bg-[#5a9620] text-white px-4 py-2 rounded w-20">
                                     {{ $hasResult ? 'New' : 'Record' }}
@@ -305,7 +316,7 @@
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Vote Likelihood (optional)</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Green Party Support (optional)</label>
                             <div class="flex gap-2 sm:gap-3">
                                 @for($i = 1; $i <= 5; $i++)
                                     <label class="flex items-center justify-center bg-white border-gray-400 rounded-lg hover:border-[#6AB023] cursor-pointer transition-all shadow-sm vote-likelihood-option flex-1" style="max-width: 64px; height: 56px; border-width: 3px;">
@@ -314,7 +325,7 @@
                                     </label>
                                 @endfor
                             </div>
-                            <p class="text-xs text-gray-500 mt-1">1 = Very unlikely, 5 = Very likely</p>
+                            <p class="text-xs text-gray-500 mt-1">1 = Definitely voting Green, 5 = Never voting Green</p>
                         </div>
 
                         <div>
