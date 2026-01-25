@@ -11,22 +11,38 @@
                 </div>
 
                 <!-- Navigation Links -->
-                <div class="hidden space-x-4 sm:-my-px sm:ms-6 sm:flex">
+                <div class="hidden space-x-4 sm:-my-px sm:ms-6 sm:flex sm:items-center">
                     <x-nav-link :href="route('canvassing.index')" :active="request()->routeIs('canvassing.*')" class="text-white hover:text-gray-200">
                         {{ __('Canvas') }}
                     </x-nav-link>
-                    @if(auth()->user()->isAdmin())
-                        <x-nav-link :href="route('import.index')" :active="request()->routeIs('import.*')" class="text-white hover:text-gray-200">
-                            {{ __('Import') }}
-                        </x-nav-link>
-                    @endif
                     <x-nav-link :href="route('exports.index')" :active="request()->routeIs('exports.*')" class="text-white hover:text-gray-200">
                         {{ __('Exports') }}
                     </x-nav-link>
                     @if(auth()->user()->isAdmin())
-                        <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')" class="text-white hover:text-gray-200">
-                            {{ __('Users') }}
-                        </x-nav-link>
+                        <x-dropdown align="right" width="48">
+                            <x-slot name="trigger">
+                                <button class="inline-flex items-center px-3 border border-transparent text-sm leading-4 font-medium rounded-md text-white hover:text-gray-200 focus:outline-none transition ease-in-out duration-150">
+                                    <div>{{ __('Management') }}</div>
+                                    <div class="ms-1">
+                                        <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                        </svg>
+                                    </div>
+                                </button>
+                            </x-slot>
+
+                            <x-slot name="content">
+                                <x-dropdown-link :href="route('elections.index')">
+                                    {{ __('Elections') }}
+                                </x-dropdown-link>
+                                <x-dropdown-link :href="route('import.index')">
+                                    {{ __('Import') }}
+                                </x-dropdown-link>
+                                <x-dropdown-link :href="route('users.index')">
+                                    {{ __('Users') }}
+                                </x-dropdown-link>
+                            </x-slot>
+                        </x-dropdown>
                     @endif
                 </div>
             </div>
@@ -83,18 +99,22 @@
             <x-responsive-nav-link :href="route('canvassing.index')" :active="request()->routeIs('canvassing.*')">
                 {{ __('Canvas') }}
             </x-responsive-nav-link>
-            @if(auth()->user()->isAdmin())
-                <x-responsive-nav-link :href="route('import.index')" :active="request()->routeIs('import.*')">
-                    {{ __('Import') }}
-                </x-responsive-nav-link>
-            @endif
             <x-responsive-nav-link :href="route('exports.index')" :active="request()->routeIs('exports.*')">
                 {{ __('Exports') }}
             </x-responsive-nav-link>
             @if(auth()->user()->isAdmin())
-                <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
-                    {{ __('Users') }}
-                </x-responsive-nav-link>
+                <div class="border-t border-white border-opacity-20 mt-2 pt-2">
+                    <div class="px-3 py-2 text-xs font-semibold text-white text-opacity-60 uppercase">Management</div>
+                    <x-responsive-nav-link :href="route('elections.index')" :active="request()->routeIs('elections.*')">
+                        {{ __('Elections') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('import.index')" :active="request()->routeIs('import.*')">
+                        {{ __('Import') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
+                        {{ __('Users') }}
+                    </x-responsive-nav-link>
+                </div>
             @endif
         </div>
 

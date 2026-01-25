@@ -46,7 +46,7 @@ class CanvassingController extends Controller
             ->byStreet($streetName)
             ->with(['knockResults' => function($query) {
                 $query->with('user')->latest('knocked_at');
-            }])
+            }, 'elections'])
             ->get();
 
         if ($addresses->isEmpty()) {
@@ -56,8 +56,9 @@ class CanvassingController extends Controller
 
         $town = $addresses->first()->town;
         $responseOptions = KnockResult::responseOptions();
+        $elections = \App\Models\Election::where('active', true)->orderBy('election_date', 'desc')->get();
 
-        return view('canvassing.street', compact('ward', 'addresses', 'streetName', 'town', 'responseOptions'));
+        return view('canvassing.street', compact('ward', 'addresses', 'streetName', 'town', 'responseOptions', 'elections'));
     }
 
     public function store(Request $request)

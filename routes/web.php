@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AddressImportController;
 use App\Http\Controllers\CanvassingController;
+use App\Http\Controllers\ElectionController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
@@ -37,13 +38,25 @@ Route::middleware('auth')->group(function () {
     Route::get('/exports/{export}/download', [ExportController::class, 'download'])->name('exports.download');
     Route::delete('/exports/{export}', [ExportController::class, 'destroy'])->name('exports.destroy');
 
-    // Import routes
-    Route::get('/import', [AddressImportController::class, 'index'])->name('import.index');
-    Route::post('/import', [AddressImportController::class, 'store'])->name('import.store');
-    Route::delete('/import/clear', [AddressImportController::class, 'clear'])->name('import.clear');
+    // Admin-only routes
+    Route::middleware('admin')->group(function () {
+        // Import routes
+        Route::get('/import', [AddressImportController::class, 'index'])->name('import.index');
+        Route::post('/import', [AddressImportController::class, 'store'])->name('import.store');
+        Route::delete('/import/clear', [AddressImportController::class, 'clear'])->name('import.clear');
 
-    // User management routes (admin only)
-    Route::resource('users', UserController::class);
+        // User management routes
+        Route::resource('users', UserController::class);
+
+        // Election management routes
+        Route::get('/elections', [ElectionController::class, 'index'])->name('elections.index');
+        Route::get('/elections/create', [ElectionController::class, 'create'])->name('elections.create');
+        Route::post('/elections', [ElectionController::class, 'store'])->name('elections.store');
+        Route::delete('/elections/{election}', [ElectionController::class, 'destroy'])->name('elections.destroy');
+    });
+
+    // Election voting toggle (available to all authenticated users)
+    Route::post('/address/{address}/election/{election}/toggle', [ElectionController::class, 'toggleVoted'])->name('address.election.toggle');
 });
 
 require __DIR__.'/auth.php';
