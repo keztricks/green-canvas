@@ -24,6 +24,7 @@
                             <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Version</th>
                             <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Created</th>
                             <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Records</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Filters</th>
                             <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Notes</th>
                             <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Filename</th>
                             <th class="px-4 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
@@ -45,6 +46,38 @@
                                 </td>
                                 <td class="px-4 py-3 text-sm text-gray-700 font-medium">
                                     {{ number_format($export->record_count) }}
+                                </td>
+                                <td class="px-4 py-3 text-sm text-gray-600">
+                                    @if($export->ward_id || $export->date_from || $export->date_to)
+                                        <button onclick="toggleFilters({{ $export->id }})" 
+                                                class="text-blue-600 hover:text-blue-800 text-xs underline">
+                                            View filters
+                                        </button>
+                                        <div id="filters-{{ $export->id }}" class="hidden mt-2 space-y-1">
+                                            @if($export->ward)
+                                                <div class="flex items-center gap-1">
+                                                    <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Ward:</span>
+                                                    <span class="text-xs">{{ $export->ward->name }}</span>
+                                                </div>
+                                            @endif
+                                            @if($export->date_from || $export->date_to)
+                                                <div class="flex items-center gap-1">
+                                                    <span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">Dates:</span>
+                                                    <span class="text-xs">
+                                                        @if($export->date_from && $export->date_to)
+                                                            {{ $export->date_from->format('d/m/Y') }} - {{ $export->date_to->format('d/m/Y') }}
+                                                        @elseif($export->date_from)
+                                                            From {{ $export->date_from->format('d/m/Y') }}
+                                                        @else
+                                                            Until {{ $export->date_to->format('d/m/Y') }}
+                                                        @endif
+                                                    </span>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @else
+                                        <span class="text-xs text-gray-400">None</span>
+                                    @endif
                                 </td>
                                 <td class="px-4 py-3 text-sm text-gray-600">
                                     {{ $export->notes ?? '-' }}
@@ -85,4 +118,11 @@
         @endif
         </div>
     </div>
+
+    <script>
+        function toggleFilters(id) {
+            const element = document.getElementById('filters-' + id);
+            element.classList.toggle('hidden');
+        }
+    </script>
 </x-app-layout>

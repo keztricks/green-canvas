@@ -6,12 +6,16 @@ use App\Models\Export;
 use App\Models\KnockResult;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Font;
 
 class ExportController extends Controller
 {
     public function index()
     {
-        $exports = Export::orderBy('created_at', 'desc')->get();
+        $exports = Export::with('ward')->orderBy('created_at', 'desc')->get();
         return view('exports.index', compact('exports'));
     }
 
@@ -27,7 +31,9 @@ class ExportController extends Controller
             $nextVersion = 'v' . ((int)($matches[1] ?? 0) + 1);
         }
 
-        return view('exports.create', compact('totalResults', 'nextVersion'));
+        $wards = \App\Models\Ward::orderBy('name')->get();
+
+        return view('exports.create', compact('totalResults', 'nextVersion', 'wards'));
     }
 
     public function store(Request $request)
@@ -35,12 +41,30 @@ class ExportController extends Controller
         $validated = $request->validate([
             'version' => 'required|string|max:50|unique:exports,version',
             'notes' => 'nullable|string|max:500',
+            'format' => 'required|in:csv,xlsx',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date|after_or_equal:date_from',
+            'ward_id' => 'nullable|exists:wards,id',
         ]);
 
-        // Get all knock results grouped by address
-        $results = KnockResult::with(['address', 'user'])
-            ->join('addresses', 'knock_results.address_id', '=', 'addresses.id')
-            ->orderBy('addresses.street_name')
+        // Build query with optional filters
+        $query = KnockResult::with(['address', 'user'])
+            ->join('addresses', 'knock_results.address_id', '=', 'addresses.id');
+        
+        // Apply date filters
+        if (!empty($validated['date_from'])) {
+            $query->whereDate('knock_results.knocked_at', '>=', $validated['date_from']);
+        }
+        if (!empty($validated['date_to'])) {
+            $query->whereDate('knock_results.knocked_at', '<=', $validated['date_to']);
+        }
+        
+        // Apply ward filter
+        if (!empty($validated['ward_id'])) {
+            $query->where('addresses.ward_id', $validated['ward_id']);
+        }
+        
+        $results = $query->orderBy('addresses.street_name')
             ->orderBy('addresses.sort_order')
             ->orderBy('knock_results.knocked_at', 'desc')
             ->select('knock_results.*')
@@ -52,14 +76,17 @@ class ExportController extends Controller
                 ->with('error', 'No knock results to export');
         }
 
-        // Generate CSV content
-        $csvContent = $this->generateCSV($results);
-        
         // Create filename with timestamp
-        $filename = 'knock_results_' . $validated['version'] . '_' . now()->format('Y-m-d_His') . '.csv';
+        $extension = $validated['format'];
+        $filename = 'knock_results_' . $validated['version'] . '_' . now()->format('Y-m-d_His') . '.' . $extension;
         
-        // Save to storage
-        Storage::disk('local')->put('exports/' . $filename, $csvContent);
+        // Generate file content based on format
+        if ($validated['format'] === 'xlsx') {
+            $filePath = $this->generateXLSX($results, $filename);
+        } else {
+            $csvContent = $this->generateCSV($results);
+            Storage::disk('local')->put('exports/' . $filename, $csvContent);
+        }
 
         // Count total records
         $totalRecords = $results->flatten()->count();
@@ -70,6 +97,9 @@ class ExportController extends Controller
             'record_count' => $totalRecords,
             'version' => $validated['version'],
             'notes' => $validated['notes'],
+            'ward_id' => $validated['ward_id'] ?? null,
+            'date_from' => $validated['date_from'] ?? null,
+            'date_to' => $validated['date_to'] ?? null,
         ]);
 
         return redirect()->route('exports.index')
@@ -193,5 +223,91 @@ class ExportController extends Controller
         }
         
         return $code;
+    }
+
+    private function generateXLSX($groupedResults, $filename)
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Knock Results');
+        
+        // Header row
+        $headers = [
+            'Export Date',
+            'House Number',
+            'Street Name',
+            'Town',
+            'Postcode',
+            'Latest Intention',
+            'Notes',
+            'User',
+            'Knocked At',
+            'History Count',
+            'Previous Results',
+        ];
+        
+        $sheet->fromArray($headers, null, 'A1');
+        
+        // Style header row
+        $headerStyle = $sheet->getStyle('A1:K1');
+        $headerStyle->getFont()->setBold(true)->setSize(12);
+        $headerStyle->getFill()
+            ->setFillType(Fill::FILL_SOLID)
+            ->getStartColor()->setRGB('6AB023');
+        $headerStyle->getFont()->getColor()->setRGB('FFFFFF');
+        
+        // Data rows
+        $row = 2;
+        foreach ($groupedResults as $addressId => $results) {
+            $latestResult = $results->first();
+            $address = $latestResult->address;
+            
+            $latestIntention = $this->formatIntention($latestResult->response, $latestResult->vote_likelihood);
+            
+            // Format previous results
+            $previousResults = [];
+            foreach ($results->skip(1) as $result) {
+                $intention = $this->formatIntention($result->response, $result->vote_likelihood);
+                $date = $result->knocked_at->format('d/m/Y');
+                $user = $result->user ? $result->user->name : 'Unknown';
+                $previousResults[] = "{$intention} ({$date}, {$user})";
+            }
+            
+            $rowData = [
+                now()->format('Y-m-d H:i:s'),
+                $address->house_number,
+                $address->street_name,
+                $address->town,
+                $address->postcode,
+                $latestIntention,
+                $latestResult->notes ?? '',
+                $latestResult->user ? $latestResult->user->name : 'Unknown',
+                $latestResult->knocked_at->format('Y-m-d H:i:s'),
+                $results->count() - 1,
+                implode(' | ', $previousResults),
+            ];
+            
+            $sheet->fromArray($rowData, null, 'A' . $row);
+            $row++;
+        }
+        
+        // Auto-size columns
+        foreach (range('A', 'K') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+        
+        // Add auto-filter to all columns
+        $lastRow = $row - 1;
+        $sheet->setAutoFilter('A1:K' . $lastRow);
+        
+        // Save to storage
+        $writer = new Xlsx($spreadsheet);
+        $tempFile = tempnam(sys_get_temp_dir(), 'export_');
+        $writer->save($tempFile);
+        
+        Storage::disk('local')->put('exports/' . $filename, file_get_contents($tempFile));
+        unlink($tempFile);
+        
+        return 'exports/' . $filename;
     }
 }
