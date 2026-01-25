@@ -34,6 +34,13 @@ class Address extends Model
         return $this->hasMany(KnockResult::class);
     }
 
+    public function elections()
+    {
+        return $this->belongsToMany(Election::class)
+            ->withPivot('voted', 'notes')
+            ->withTimestamps();
+    }
+
     public function latestResult()
     {
         return $this->knockResults()->latest('knocked_at')->first();

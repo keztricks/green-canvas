@@ -49,6 +49,24 @@
                             </h3>
                             <p class="text-sm text-gray-600">{{ $address->postcode }}</p>
 
+                            @if($elections->isNotEmpty())
+                                <div class="mt-2 flex flex-wrap gap-1">
+                                    @foreach($elections as $election)
+                                        @php
+                                            $hasVoted = $address->elections->contains('id', $election->id);
+                                            $suffix = $election->type === 'general' ? '-GE' : '';
+                                        @endphp
+                                        <button type="button"
+                                                onclick="toggleElection({{ $address->id }}, {{ $election->id }}, this)"
+                                                class="text-xs px-2 py-1 rounded {{ $hasVoted ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-gray-100 text-gray-500 border border-gray-300' }}"
+                                                data-voted="{{ $hasVoted ? '1' : '0' }}"
+                                                title="{{ $election->name }} - {{ $election->election_date->format('d/m/Y') }}">
+                                            {{ $election->election_date->format('y') }}{{ $suffix }} {{ $hasVoted ? '✓' : '✗' }}
+                                        </button>
+                                    @endforeach
+                                </div>
+                            @endif
+
                             @if($hasResult)
                                 <div class="mt-2 p-3 bg-white rounded border-l-4 
                                     @if($latestResult->response === 'green') border-green-500
@@ -254,12 +272,12 @@
                         <div class="ml-4 flex flex-col gap-2">
                             @if(!$address->do_not_knock)
                                 <button onclick="toggleForm({{ $address->id }})" 
-                                        class="bg-[#6AB023] hover:bg-[#5a9620] text-white px-4 py-2 rounded">
+                                        class="bg-[#6AB023] hover:bg-[#5a9620] text-white px-4 py-2 rounded w-20">
                                     {{ $hasResult ? 'New' : 'Record' }}
                                 </button>
                                 <form action="{{ route('address.mark-do-not-knock', $address) }}" method="POST" onsubmit="return confirm('Are you sure you want to mark this address as Do Not Knock?')">
                                     @csrf
-                                    <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm">
+                                    <button type="submit" class="w-20 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm">
                                         DNK
                                     </button>
                                 </form>
@@ -375,6 +393,48 @@ function updateVoteLikelihood(radio) {
     const span = selectedLabel.querySelector('span');
     span.classList.remove('text-gray-700', 'font-semibold');
     span.classList.add('text-[#6AB023]', 'font-bold');
+}
+
+function toggleElection(addressId, electionId, button) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const url = `/address/${addressId}/election/${electionId}/toggle`;
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            const voted = data.voted;
+            const suffix = button.textContent.includes('-GE') ? '-GE' : '';
+            const year = button.textContent.match(/\d+/)[0];
+            
+            if (voted) {
+                button.className = 'text-xs px-2 py-1 rounded bg-green-100 text-green-700 border border-green-300';
+                button.innerHTML = `${year}${suffix} ✓`;
+                button.dataset.voted = '1';
+            } else {
+                button.className = 'text-xs px-2 py-1 rounded bg-gray-100 text-gray-500 border border-gray-300';
+                button.innerHTML = `${year}${suffix} ✗`;
+                button.dataset.voted = '0';
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update election status. Please try again.');
+    });
 }
 </script>
         </div>
