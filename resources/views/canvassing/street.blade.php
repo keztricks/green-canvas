@@ -318,14 +318,23 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Green Party Support (optional)</label>
                             <div class="flex gap-2 sm:gap-3">
-                                @for($i = 1; $i <= 5; $i++)
-                                    <label class="flex items-center justify-center bg-white border-gray-400 rounded-lg hover:border-[#6AB023] cursor-pointer transition-all shadow-sm vote-likelihood-option flex-1" style="max-width: 64px; height: 56px; border-width: 3px;">
+                                @for($i = 5; $i >= 1; $i--)
+                                    @php
+                                        $bgColor = match($i) {
+                                            5 => 'background-color: #ef4444;',
+                                            4 => 'background-color: #f97316;',
+                                            3 => 'background-color: #eab308;',
+                                            2 => 'background-color: #84cc16;',
+                                            1 => 'background-color: #22c55e;',
+                                        };
+                                    @endphp
+                                    <label class="flex items-center justify-center rounded-lg hover:opacity-80 cursor-pointer transition-all shadow-sm vote-likelihood-option flex-1" style="max-width: 64px; height: 56px; border-width: 3px; border-color: transparent; {{ $bgColor }}">
                                         <input type="radio" name="vote_likelihood" value="{{ $i }}" class="sr-only" onchange="updateVoteLikelihood(this)">
-                                        <span class="text-xl sm:text-2xl font-semibold text-gray-700">{{ $i }}</span>
+                                        <span class="text-xl sm:text-2xl font-semibold text-white">{{ $i }}</span>
                                     </label>
                                 @endfor
                             </div>
-                            <p class="text-xs text-gray-500 mt-1">1 = Definitely voting Green, 5 = Never voting Green</p>
+                            <p class="text-xs text-gray-500 mt-1">5 = Never voting Green, 1 = Definitely voting Green</p>
                         </div>
 
                         <div>
@@ -388,22 +397,24 @@ function updateVoteLikelihood(radio) {
     
     // Reset all labels
     labels.forEach(label => {
-        label.classList.remove('border-[#6AB023]', 'bg-green-50');
-        label.classList.add('border-gray-400');
-        label.style.borderWidth = '3px';
+        label.style.border = '3px solid transparent';
+        label.style.opacity = '0.7';
         const span = label.querySelector('span');
-        span.classList.remove('text-[#6AB023]', 'font-bold');
-        span.classList.add('text-gray-700', 'font-semibold');
+        // Remove checkmark if exists
+        const checkmark = label.querySelector('.checkmark');
+        if (checkmark) checkmark.remove();
     });
     
     // Highlight selected label
     const selectedLabel = radio.closest('label');
-    selectedLabel.classList.remove('border-gray-400');
-    selectedLabel.classList.add('border-[#6AB023]', 'bg-green-50');
-    selectedLabel.style.borderWidth = '3px';
-    const span = selectedLabel.querySelector('span');
-    span.classList.remove('text-gray-700', 'font-semibold');
-    span.classList.add('text-[#6AB023]', 'font-bold');
+    selectedLabel.style.border = '3px solid #1f2937';
+    selectedLabel.style.opacity = '1';
+    // Add checkmark
+    const checkmark = document.createElement('div');
+    checkmark.className = 'checkmark absolute -top-1 -right-1 bg-green-600 rounded-full w-6 h-6 flex items-center justify-center';
+    checkmark.innerHTML = '<span style="color: white; font-size: 14px;">✓</span>';
+    selectedLabel.style.position = 'relative';
+    selectedLabel.appendChild(checkmark);
 }
 
 function toggleElection(addressId, electionId, button) {
