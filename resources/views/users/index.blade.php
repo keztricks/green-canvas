@@ -33,6 +33,7 @@
                                     <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
                                     <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
                                     <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Role</th>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Last Login</th>
                                     <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Created</th>
                                     <th class="px-4 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
                                 </tr>
@@ -51,6 +52,15 @@
                                                 {{ $user->role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">
                                                 {{ ucfirst($user->role) }}
                                             </span>
+                                        </td>
+                                        <td class="px-4 py-4 text-gray-600 text-sm">
+                                            @if($user->last_login_at)
+                                                <span title="{{ $user->last_login_at->format('d M Y H:i:s') }}">
+                                                    {{ $user->last_login_at->diffForHumans() }}
+                                                </span>
+                                            @else
+                                                <span class="text-gray-400">Never</span>
+                                            @endif
                                         </td>
                                         <td class="px-4 py-4 text-gray-600 text-sm">
                                             {{ $user->created_at->format('d M Y') }}
