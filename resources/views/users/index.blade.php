@@ -65,18 +65,18 @@
                                         <td class="px-4 py-4 text-gray-600 text-sm">
                                             {{ $user->created_at->format('d M Y') }}
                                         </td>
-                                        <td class="px-4 py-4 text-right">
-                                            <div class="flex justify-end gap-2">
+                                        <td class="px-4 py-4">
+                                            <div class="flex justify-end items-center gap-3">
                                                 <a href="{{ route('users.edit', $user) }}" 
                                                    class="text-[#6AB023] hover:text-[#5a9620] font-medium text-sm">
                                                     Edit
                                                 </a>
                                                 @if($user->id !== auth()->id())
-                                                    <form action="{{ route('users.destroy', $user) }}" method="POST" class="inline" 
+                                                    <form action="{{ route('users.destroy', $user) }}" method="POST" class="flex" 
                                                           onsubmit="return confirm('Are you sure you want to delete {{ $user->name }}?');">
                                                         @csrf
                                                         @method('DELETE')
-                                                        <button type="submit" class="text-red-600 hover:text-red-800 font-medium text-sm">
+                                                        <button type="submit" class="text-red-600 hover:text-red-800 font-medium text-sm p-0 bg-transparent border-0">
                                                             Delete
                                                         </button>
                                                     </form>
