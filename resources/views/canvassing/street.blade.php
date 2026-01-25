@@ -286,12 +286,6 @@
                                         class="bg-[#6AB023] hover:bg-[#5a9620] text-white px-4 py-2 rounded w-20">
                                     {{ $hasResult ? 'New' : 'Record' }}
                                 </button>
-                                <form action="{{ route('address.mark-do-not-knock', $address) }}" method="POST" onsubmit="return confirm('Are you sure you want to mark this address as Do Not Knock?')">
-                                    @csrf
-                                    <button type="submit" class="w-20 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm">
-                                        DNK
-                                    </button>
-                                </form>
                             @endif
                         </div>
                     </div>
@@ -348,7 +342,7 @@
                             </p>
                         </div>
 
-                        <div class="flex space-x-2">
+                        <div class="flex flex-col gap-2 min-[500px]:flex-row">
                             <button type="submit" class="bg-[#6AB023] hover:bg-[#5a9620] text-white px-4 py-2 rounded">
                                 Save Result
                             </button>
@@ -356,8 +350,18 @@
                                     class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">
                                 Cancel
                             </button>
+                            @if(!$address->do_not_knock && !$isNeverVoter)
+                                <button type="button" onclick="if(confirm('Are you sure you want to mark this address as Do Not Knock?')) { document.getElementById('dnk-form-{{ $address->id }}').submit(); }" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
+                                    Mark as Do Not Knock
+                                </button>
+                            @endif
                         </div>
                     </form>
+                    @if(!$address->do_not_knock && !$isNeverVoter)
+                        <form id="dnk-form-{{ $address->id }}" action="{{ route('address.mark-do-not-knock', $address) }}" method="POST" class="hidden">
+                            @csrf
+                        </form>
+                    @endif
                 </div>
             @endforeach
         </div>
