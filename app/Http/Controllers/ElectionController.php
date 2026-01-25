@@ -4,19 +4,21 @@ namespace App\Http\Controllers;
 
 use App\Models\Election;
 use App\Models\Address;
+use App\Models\Ward;
 use Illuminate\Http\Request;
 
 class ElectionController extends Controller
 {
     public function index()
     {
-        $elections = Election::orderBy('election_date', 'desc')->get();
+        $elections = Election::with('wards')->orderBy('election_date', 'desc')->get();
         return view('elections.index', compact('elections'));
     }
 
     public function create()
     {
-        return view('elections.create');
+        $wards = Ward::orderBy('name')->get();
+        return view('elections.create', compact('wards'));
     }
 
     public function store(Request $request)
@@ -25,11 +27,17 @@ class ElectionController extends Controller
             'name' => 'required|string|max:255',
             'election_date' => 'required|date',
             'type' => 'required|in:general,local,by-election,other',
+            'ward_ids' => 'nullable|array',
+            'ward_ids.*' => 'exists:wards,id',
         ]);
 
         $validated['active'] = true;
 
-        Election::create($validated);
+        $election = Election::create($validated);
+
+        if ($request->has('ward_ids')) {
+            $election->wards()->attach($request->ward_ids);
+        }
 
         return redirect()->route('elections.index')
             ->with('success', 'Election created successfully');
