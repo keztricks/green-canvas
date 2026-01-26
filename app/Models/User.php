@@ -52,6 +52,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Mutator to ensure email is always stored in lowercase.
+     */
+    public function setEmailAttribute($value)
+    {
+        $this->attributes['email'] = strtolower($value);
+    }
+
+    /**
      * Check if user is an admin.
      */
     public function isAdmin(): bool
