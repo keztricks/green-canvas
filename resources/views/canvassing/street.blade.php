@@ -74,7 +74,7 @@
                             @endif
 
                             @if($hasResult)
-                                <div class="mt-2 p-3 bg-white rounded border-l-4 
+                                <div class="mt-2 p-3 bg-white rounded border-l-4 {{ ($address->do_not_knock || $isNeverVoter) ? 'hidden' : '' }} latest-result-{{ $address->id }}
                                     @if($latestResult->response === 'green') border-green-500
                                     @elseif($latestResult->response === 'labour') border-red-500
                                     @elseif($latestResult->response === 'conservative') border-blue-500
@@ -129,9 +129,9 @@
 
                                 @if($hasHistory)
                                     <div class="mt-2">
-                                        <button onclick="toggleHistory({{ $address->id }})" 
+                                        <button onclick="toggleHistory({{ $address->id }}, {{ ($address->do_not_knock || $isNeverVoter) ? 'true' : 'false' }})" 
                                                 class="text-sm text-gray-600 hover:text-gray-800 underline">
-                                            Show history ({{ $allResults->count() - 1 }} previous)
+                                            Show history ({{ ($address->do_not_knock || $isNeverVoter) ? $allResults->count() : $allResults->count() - 1 }} {{ ($address->do_not_knock || $isNeverVoter) ? 'results' : 'previous' }})
                                         </button>
                                         <div id="history-{{ $address->id }}" class="hidden mt-2 space-y-2">
                                             @foreach($allResults->skip(1) as $result)
@@ -281,7 +281,7 @@
                         </div>
 
                         <div class="ml-4 flex flex-col gap-2">
-                            @if(!$address->do_not_knock && !$isNeverVoter)
+                            @if(!$address->do_not_knock)
                                 <button onclick="toggleForm({{ $address->id }})" 
                                         class="bg-[#6AB023] hover:bg-[#5a9620] text-white px-4 py-2 rounded w-20">
                                     {{ $hasResult ? 'New' : 'Record' }}
@@ -350,14 +350,14 @@
                                     class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">
                                 Cancel
                             </button>
-                            @if(!$address->do_not_knock && !$isNeverVoter)
+                            @if(!$address->do_not_knock)
                                 <button type="button" onclick="if(confirm('Are you sure you want to mark this address as Do Not Knock?')) { document.getElementById('dnk-form-{{ $address->id }}').submit(); }" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
                                     Mark as Do Not Knock
                                 </button>
                             @endif
                         </div>
                     </form>
-                    @if(!$address->do_not_knock && !$isNeverVoter)
+                    @if(!$address->do_not_knock)
                         <form id="dnk-form-{{ $address->id }}" action="{{ route('address.mark-do-not-knock', $address) }}" method="POST" class="hidden">
                             @csrf
                         </form>
@@ -379,7 +379,7 @@ function toggleEditForm(resultId) {
     editForm.classList.toggle('hidden');
 }
 
-function toggleHistory(addressId) {
+function toggleHistory(addressId, includeLatest = false) {
     const history = document.getElementById(`history-${addressId}`);
     const button = event.target;
     
@@ -387,10 +387,27 @@ function toggleHistory(addressId) {
         history.classList.remove('hidden');
         const count = button.textContent.match(/\d+/)[0];
         button.textContent = 'Hide history';
+        
+        // Also show the latest result if this is a DNK or never voter
+        if (includeLatest) {
+            const latestResult = document.querySelector(`.latest-result-${addressId}`);
+            if (latestResult) {
+                latestResult.classList.remove('hidden');
+            }
+        }
     } else {
         history.classList.add('hidden');
         const count = history.querySelectorAll('.p-2').length;
-        button.textContent = `Show history (${count} previous)`;
+        const label = includeLatest ? 'results' : 'previous';
+        button.textContent = `Show history (${count} ${label})`;
+        
+        // Also hide the latest result if this is a DNK or never voter
+        if (includeLatest) {
+            const latestResult = document.querySelector(`.latest-result-${addressId}`);
+            if (latestResult) {
+                latestResult.classList.add('hidden');
+            }
+        }
     }
 }
 
