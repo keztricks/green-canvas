@@ -37,7 +37,7 @@ class Address extends Model
     public function elections()
     {
         return $this->belongsToMany(Election::class)
-            ->withPivot('voted', 'notes')
+            ->withPivot('status', 'notes')
             ->withTimestamps();
     }
 

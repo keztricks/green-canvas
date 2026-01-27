@@ -55,14 +55,27 @@ class ElectionController extends Controller
     {
         $address = Address::findOrFail($addressId);
         
-        if ($address->elections()->where('election_id', $electionId)->exists()) {
-            $address->elections()->detach($electionId);
-            $voted = false;
+        $pivot = $address->elections()->where('election_id', $electionId)->first();
+        
+        if (!$pivot) {
+            // No record exists, create with 'voted' status
+            $address->elections()->attach($electionId, ['status' => 'voted']);
+            $status = 'voted';
         } else {
-            $address->elections()->attach($electionId, ['voted' => true]);
-            $voted = true;
+            $currentStatus = $pivot->pivot->status;
+            
+            // Cycle through: unknown -> voted -> not_voted -> unknown
+            $newStatus = match($currentStatus) {
+                'unknown' => 'voted',
+                'voted' => 'not_voted',
+                'not_voted' => 'unknown',
+                default => 'voted'
+            };
+            
+            $address->elections()->updateExistingPivot($electionId, ['status' => $newStatus]);
+            $status = $newStatus;
         }
 
-        return response()->json(['success' => true, 'voted' => $voted]);
+        return response()->json(['success' => true, 'status' => $status]);
     }
 }

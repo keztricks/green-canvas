@@ -59,15 +59,28 @@
                                 <div class="mt-2 flex flex-wrap gap-1">
                                     @foreach($elections as $election)
                                         @php
-                                            $hasVoted = $address->elections->contains('id', $election->id);
+                                            $electionPivot = $address->elections->where('id', $election->id)->first();
+                                            $status = $electionPivot ? $electionPivot->pivot->status : 'unknown';
                                             $suffix = $election->type === 'general' ? '-GE' : '';
+                                            
+                                            $classes = match($status) {
+                                                'voted' => 'bg-green-100 text-green-700 border border-green-300',
+                                                'not_voted' => 'bg-red-100 text-red-700 border border-red-300',
+                                                default => 'bg-gray-100 text-gray-500 border border-gray-300'
+                                            };
+                                            
+                                            $symbol = match($status) {
+                                                'voted' => '✓',
+                                                'not_voted' => '✗',
+                                                default => '?'
+                                            };
                                         @endphp
                                         <button type="button"
                                                 onclick="toggleElection({{ $address->id }}, {{ $election->id }}, this)"
-                                                class="text-xs px-2 py-1 rounded {{ $hasVoted ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-gray-100 text-gray-500 border border-gray-300' }}"
-                                                data-voted="{{ $hasVoted ? '1' : '0' }}"
+                                                class="text-xs px-2 py-1 rounded {{ $classes }}"
+                                                data-status="{{ $status }}"
                                                 title="{{ $election->name }} - {{ $election->election_date->format('d/m/Y') }}">
-                                            {{ $election->election_date->format('y') }}{{ $suffix }} {{ $hasVoted ? '✓' : '✗' }}
+                                            {{ $election->election_date->format('y') }}{{ $suffix }} {{ $symbol }}
                                         </button>
                                     @endforeach
                                 </div>
@@ -459,18 +472,22 @@ function toggleElection(addressId, electionId, button) {
     })
     .then(data => {
         if (data.success) {
-            const voted = data.voted;
+            const status = data.status;
             const suffix = button.textContent.includes('-GE') ? '-GE' : '';
             const year = button.textContent.match(/\d+/)[0];
             
-            if (voted) {
+            if (status === 'voted') {
                 button.className = 'text-xs px-2 py-1 rounded bg-green-100 text-green-700 border border-green-300';
                 button.innerHTML = `${year}${suffix} ✓`;
-                button.dataset.voted = '1';
+                button.dataset.status = 'voted';
+            } else if (status === 'not_voted') {
+                button.className = 'text-xs px-2 py-1 rounded bg-red-100 text-red-700 border border-red-300';
+                button.innerHTML = `${year}${suffix} ✗`;
+                button.dataset.status = 'not_voted';
             } else {
                 button.className = 'text-xs px-2 py-1 rounded bg-gray-100 text-gray-500 border border-gray-300';
-                button.innerHTML = `${year}${suffix} ✗`;
-                button.dataset.voted = '0';
+                button.innerHTML = `${year}${suffix} ?`;
+                button.dataset.status = 'unknown';
             }
         }
     })
