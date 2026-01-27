@@ -24,7 +24,7 @@ class Election extends Model
     public function addresses()
     {
         return $this->belongsToMany(Address::class)
-            ->withPivot('voted', 'notes')
+            ->withPivot('status', 'notes')
             ->withTimestamps();
     }
 
