@@ -38,6 +38,29 @@ class CanvassingController extends Controller
         return view('canvassing.ward', compact('ward', 'streets'));
     }
 
+    public function allStreets($wardId)
+    {
+        $ward = Ward::findOrFail($wardId);
+        
+        $addresses = Address::byWard($wardId)
+            ->with(['knockResults' => function($query) {
+                $query->with('user')->latest('knocked_at');
+            }, 'elections'])
+            ->orderBy('street_name')
+            ->orderBy('sort_order')
+            ->get();
+
+        if ($addresses->isEmpty()) {
+            return redirect()->route('canvassing.ward', $wardId)
+                ->with('error', 'No addresses found in this ward');
+        }
+
+        $responseOptions = KnockResult::responseOptions();
+        $elections = \App\Models\Election::where('active', true)->orderBy('election_date', 'desc')->get();
+
+        return view('canvassing.all-streets', compact('ward', 'addresses', 'responseOptions', 'elections'));
+    }
+
     public function street($wardId, $streetName)
     {
         $ward = Ward::findOrFail($wardId);
