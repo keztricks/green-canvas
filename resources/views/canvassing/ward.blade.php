@@ -8,8 +8,15 @@
             </div>
 
             <div class="bg-white rounded-lg shadow p-6">
-                <h2 class="text-3xl font-bold mb-2 text-gray-800">{{ $ward->name }}</h2>
-                <p class="text-gray-600 mb-6">Select a street to begin canvassing</p>
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h2 class="text-3xl font-bold mb-2 text-gray-800">{{ $ward->name }}</h2>
+                        <p class="text-gray-600">Select a street to begin canvassing</p>
+                    </div>
+                    <a href="{{ route('canvassing.all-streets', $ward) }}" class="bg-[#6AB023] hover:bg-[#5a9620] text-white px-4 py-2 rounded whitespace-nowrap">
+                        View All Addresses
+                    </a>
+                </div>
 
                 @if($streets->isEmpty())
                     <div class="text-center py-12">
