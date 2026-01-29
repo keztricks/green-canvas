@@ -14,6 +14,13 @@
             <p class="text-gray-600">{{ $town }}</p>
         </div>
 
+        <!-- Add Address Button -->
+        <div class="mb-4 flex justify-end">
+            <button onclick="toggleAddressModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center gap-2">
+                <span>+</span> Add Missing Address
+            </button>
+        </div>
+
         @if(auth()->user()->isAdmin())
         <!-- Election Toggle -->
         <div class="mb-4">
@@ -544,7 +551,78 @@ function toggleElectionEditing() {
 document.addEventListener('DOMContentLoaded', function() {
     toggleElectionEditing();
 });
+
+function toggleAddressModal() {
+    const modal = document.getElementById('addAddressModal');
+    modal.classList.toggle('hidden');
+}
 </script>
+
+<!-- Add Address Modal -->
+<div id="addAddressModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-gray-900">Add Missing Address</h3>
+            <button onclick="toggleAddressModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+        </div>
+
+        <form action="{{ route('address.store') }}" method="POST" class="space-y-4">
+            @csrf
+            <input type="hidden" name="ward_id" value="{{ $ward->id }}">
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">House Number *</label>
+                    <input type="text" 
+                           name="house_number" 
+                           required
+                           placeholder="e.g. 12 or 12a"
+                           class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Postcode *</label>
+                    <input type="text" 
+                           name="postcode" 
+                           required
+                           placeholder="e.g. HX1 3AB"
+                           value="{{ $addresses->first()->postcode ?? '' }}"
+                           class="w-full border border-gray-300 rounded px-3 py-2 text-sm uppercase">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Street Name *</label>
+                <input type="text" 
+                       name="street_name" 
+                       required
+                       value="{{ $streetName }}"
+                       class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Town *</label>
+                <input type="text" 
+                       name="town" 
+                       required
+                       value="{{ $town }}"
+                       class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+            </div>
+
+            <div class="flex justify-end gap-3 pt-4">
+                <button type="button" 
+                        onclick="toggleAddressModal()" 
+                        class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">
+                    Cancel
+                </button>
+                <button type="submit" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                    Add Address
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
         </div>
     </div>
 </x-app-layout>
