@@ -188,7 +188,7 @@ function loadMoreAddresses() {
     
     currentPage++;
     
-    fetch(`{{ route('canvassing.all-streets', $ward) }}?page=${currentPage}`, {
+    fetch(`/ward/{{ $ward->id }}/all-streets?page=${currentPage}`, {
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json'
@@ -236,7 +236,7 @@ document.getElementById('addressSearch').addEventListener('input', function(e) {
 });
 
 function performSearch(searchTerm) {
-    fetch(`{{ route('canvassing.all-streets', $ward) }}?search=${encodeURIComponent(searchTerm)}`, {
+    fetch(`/ward/{{ $ward->id }}/all-streets?search=${encodeURIComponent(searchTerm)}`, {
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json'
