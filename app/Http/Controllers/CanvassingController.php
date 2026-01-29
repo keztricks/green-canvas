@@ -140,4 +140,44 @@ class CanvassingController extends Controller
 
         return back()->with('success', 'Do Not Knock status cleared');
     }
-}
+    public function storeAddress(Request $request)
+    {
+        $validated = $request->validate([
+            'ward_id' => 'required|exists:wards,id',
+            'house_number' => 'required|string|max:255',
+            'street_name' => 'required|string|max:255',
+            'town' => 'required|string|max:255',
+            'postcode' => 'required|string|max:10',
+        ]);
+
+        // Check for duplicate
+        $exists = Address::where('ward_id', $validated['ward_id'])
+            ->where('house_number', $validated['house_number'])
+            ->where('street_name', $validated['street_name'])
+            ->where('postcode', $validated['postcode'])
+            ->exists();
+
+        if ($exists) {
+            return redirect()->back()
+                ->with('error', 'This address already exists');
+        }
+
+        // Extract numeric sort order
+        $sortOrder = 0;
+        if (preg_match('/^(\d+)/', $validated['house_number'], $matches)) {
+            $sortOrder = (int)$matches[1];
+        }
+
+        Address::create([
+            'ward_id' => $validated['ward_id'],
+            'house_number' => $validated['house_number'],
+            'street_name' => $validated['street_name'],
+            'town' => $validated['town'],
+            'postcode' => $validated['postcode'],
+            'constituency' => 'Halifax',
+            'sort_order' => $sortOrder,
+        ]);
+
+        return redirect()->back()
+            ->with('success', 'Address added successfully');
+    }}
