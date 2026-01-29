@@ -42,21 +42,55 @@ class CanvassingController extends Controller
     {
         $ward = Ward::findOrFail($wardId);
         
-        $addresses = Address::byWard($wardId)
+        $query = Address::byWard($wardId)
             ->with(['knockResults' => function($query) {
                 $query->with('user')->latest('knocked_at');
             }, 'elections'])
             ->orderBy('street_name')
-            ->orderBy('sort_order')
-            ->get();
+            ->orderBy('sort_order');
 
-        if ($addresses->isEmpty()) {
+        // Handle search
+        if (request()->has('search')) {
+            $search = request('search');
+            $searchTerms = preg_split('/\s+/', trim($search));
+            
+            $query->where(function($q) use ($searchTerms) {
+                foreach ($searchTerms as $term) {
+                    $q->where(function($subQ) use ($term) {
+                        $subQ->where('street_name', 'like', "%{$term}%")
+                             ->orWhere('house_number', 'like', "%{$term}%");
+                    });
+                }
+            });
+        }
+
+        $addresses = $query->paginate(50);
+
+        if ($addresses->isEmpty() && !request()->has('search')) {
             return redirect()->route('canvassing.ward', $wardId)
                 ->with('error', 'No addresses found in this ward');
         }
 
         $responseOptions = KnockResult::responseOptions();
         $elections = \App\Models\Election::where('active', true)->orderBy('election_date', 'desc')->get();
+
+        // Return JSON for AJAX requests
+        if (request()->wantsJson() || request()->ajax()) {
+            $addressesHtml = $addresses->map(function($address) use ($responseOptions, $elections) {
+                return view('canvassing.partials.address-item', [
+                    'address' => $address,
+                    'responseOptions' => $responseOptions,
+                    'elections' => $elections
+                ])->render();
+            });
+
+            return response()->json([
+                'addresses' => $addressesHtml,
+                'hasMore' => $addresses->hasMorePages(),
+                'nextPage' => $addresses->currentPage() + 1,
+                'total' => $addresses->total(),
+            ]);
+        }
 
         return view('canvassing.all-streets', compact('ward', 'addresses', 'responseOptions', 'elections'));
     }
@@ -98,7 +132,13 @@ class CanvassingController extends Controller
         
         KnockResult::create($validated);
 
-        return back()->with('success', 'Result recorded successfully')->withFragment('address-' . $validated['address_id']);
+        $redirect = back()->with('success', 'Result recorded successfully')->withFragment('address-' . $validated['address_id']);
+        
+        if ($request->has('search')) {
+            $redirect->withInput(['search' => $request->input('search')]);
+        }
+        
+        return $redirect;
     }
 
     public function update(Request $request, KnockResult $knockResult)
@@ -111,34 +151,58 @@ class CanvassingController extends Controller
 
         $knockResult->update($validated);
 
-        return back()->with('success', 'Result updated successfully');
+        $redirect = back()->with('success', 'Result updated successfully');
+        
+        if ($request->has('search')) {
+            $redirect->withInput(['search' => $request->input('search')]);
+        }
+        
+        return $redirect;
     }
 
-    public function destroy(KnockResult $knockResult)
+    public function destroy(Request $request, KnockResult $knockResult)
     {
         $knockResult->delete();
 
-        return back()->with('success', 'Result deleted successfully');
+        $redirect = back()->with('success', 'Result deleted successfully');
+        
+        if ($request->has('search')) {
+            $redirect->withInput(['search' => $request->input('search')]);
+        }
+        
+        return $redirect;
     }
 
-    public function markDoNotKnock(Address $address)
+    public function markDoNotKnock(Request $request, Address $address)
     {
         $address->update([
             'do_not_knock' => true,
             'do_not_knock_at' => now(),
         ]);
 
-        return back()->with('success', 'Address marked as Do Not Knock');
+        $redirect = back()->with('success', 'Address marked as Do Not Knock');
+        
+        if ($request->has('search')) {
+            $redirect->withInput(['search' => $request->input('search')]);
+        }
+        
+        return $redirect;
     }
 
-    public function clearDoNotKnock(Address $address)
+    public function clearDoNotKnock(Request $request, Address $address)
     {
         $address->update([
             'do_not_knock' => false,
             'do_not_knock_at' => null,
         ]);
 
-        return back()->with('success', 'Do Not Knock status cleared');
+        $redirect = back()->with('success', 'Do Not Knock status cleared');
+        
+        if ($request->has('search')) {
+            $redirect->withInput(['search' => $request->input('search')]);
+        }
+        
+        return $redirect;
     }
     public function storeAddress(Request $request)
     {
@@ -158,8 +222,14 @@ class CanvassingController extends Controller
             ->exists();
 
         if ($exists) {
-            return redirect()->back()
+            $redirect = redirect()->back()
                 ->with('error', 'This address already exists');
+            
+            if ($request->has('search')) {
+                $redirect->withInput(['search' => $request->input('search')]);
+            }
+            
+            return $redirect;
         }
 
         // Extract numeric sort order
@@ -178,6 +248,12 @@ class CanvassingController extends Controller
             'sort_order' => $sortOrder,
         ]);
 
-        return redirect()->back()
+        $redirect = redirect()->back()
             ->with('success', 'Address added successfully');
+        
+        if ($request->has('search')) {
+            $redirect->withInput(['search' => $request->input('search')]);
+        }
+        
+        return $redirect;
     }}
