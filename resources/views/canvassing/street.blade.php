@@ -14,6 +14,19 @@
             <p class="text-gray-600">{{ $town }}</p>
         </div>
 
+        @if(auth()->user()->isAdmin())
+        <!-- Election Toggle -->
+        <div class="mb-4">
+            <label class="flex items-center space-x-2 cursor-pointer p-3 bg-gray-50 rounded-lg border border-gray-300 hover:bg-gray-100 transition-colors">
+                <input type="checkbox" id="electionEditToggle" class="w-4 h-4 text-[#6AB023] rounded" onchange="toggleElectionEditing()">
+                <span class="text-sm font-medium text-gray-700">
+                    <span id="lockIcon">🔒</span> Enable election editing
+                </span>
+                <span class="text-xs text-gray-500 ml-auto">Click to toggle</span>
+            </label>
+        </div>
+        @endif
+
         <div class="space-y-4">
             @foreach($addresses as $address)
                 @php
@@ -452,6 +465,11 @@ function updateVoteLikelihood(radio) {
 }
 
 function toggleElection(addressId, electionId, button) {
+    // Check if editing is enabled
+    if (!window.electionEditingEnabled) {
+        return; // Do nothing if editing is disabled
+    }
+    
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     const url = `/address/${addressId}/election/${electionId}/toggle`;
     
@@ -496,6 +514,36 @@ function toggleElection(addressId, electionId, button) {
         alert('Failed to update election status. Please try again.');
     });
 }
+
+// Initialize election editing state
+window.electionEditingEnabled = false;
+
+function toggleElectionEditing() {
+    const checkbox = document.getElementById('electionEditToggle');
+    const lockIcon = document.getElementById('lockIcon');
+    const allElectionBadges = document.querySelectorAll('[onclick^="toggleElection"]');
+    
+    window.electionEditingEnabled = checkbox.checked;
+    
+    if (checkbox.checked) {
+        lockIcon.textContent = '🔓';
+        allElectionBadges.forEach(badge => {
+            badge.style.cursor = 'pointer';
+            badge.style.opacity = '1';
+        });
+    } else {
+        lockIcon.textContent = '🔒';
+        allElectionBadges.forEach(badge => {
+            badge.style.cursor = 'not-allowed';
+            badge.style.opacity = '0.7';
+        });
+    }
+}
+
+// Set initial state on page load
+document.addEventListener('DOMContentLoaded', function() {
+    toggleElectionEditing();
+});
 </script>
         </div>
     </div>
