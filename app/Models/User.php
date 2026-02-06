@@ -14,6 +14,7 @@ class User extends Authenticatable
 
     const ROLE_ADMIN = 'admin';
     const ROLE_CANVASSER = 'canvasser';
+    const ROLE_WARD_ADMIN = 'ward_admin';
 
     /**
      * The attributes that are mass assignable.
@@ -82,6 +83,7 @@ class User extends Authenticatable
     {
         return [
             self::ROLE_CANVASSER => 'Canvasser',
+            self::ROLE_WARD_ADMIN => 'Ward Admin',
             self::ROLE_ADMIN => 'Admin',
         ];
     }

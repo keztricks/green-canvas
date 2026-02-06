@@ -33,6 +33,13 @@ class DatabaseSeeder extends Seeder
             'role' => User::ROLE_CANVASSER,
         ]);
 
+        User::create([
+            'name' => 'Ward Admin User',
+            'email' => 'wardadmin@example.com',
+            'password' => bcrypt('password'),
+            'role' => User::ROLE_WARD_ADMIN,
+        ]);
+
         // Create wards
         $wardNames = [
             'Brighouse',

@@ -37,6 +37,7 @@
                         <select name="role" id="role" required
                                 class="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#6AB023] @error('role') border-red-500 @enderror">
                             <option value="admin" {{ old('role', $user->role) === 'admin' ? 'selected' : '' }}>Admin</option>
+                            <option value="ward_admin" {{ old('role', $user->role) === 'ward_admin' ? 'selected' : '' }}>Ward Admin</option>
                             <option value="canvasser" {{ old('role', $user->role) === 'canvasser' ? 'selected' : '' }}>Canvasser</option>
                         </select>
                         @error('role')
