@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Ward;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
@@ -16,7 +17,7 @@ class UserController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        $users = User::orderBy('name')->get();
+        $users = User::with('wards')->orderBy('name')->get();
         return view('users.index', compact('users'));
     }
 
@@ -26,7 +27,8 @@ class UserController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        return view('users.create');
+        $wards = Ward::orderBy('name')->get();
+        return view('users.create', compact('wards'));
     }
 
     public function store(Request $request)
@@ -40,11 +42,18 @@ class UserController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => ['required', 'confirmed', Password::defaults()],
             'role' => 'required|in:admin,canvasser,ward_admin',
+            'wards' => 'nullable|array',
+            'wards.*' => 'exists:wards,id',
         ]);
 
         $validated['password'] = Hash::make($validated['password']);
 
-        User::create($validated);
+        $user = User::create($validated);
+        
+        // Sync wards for non-admin users
+        if ($request->has('wards')) {
+            $user->wards()->sync($request->wards);
+        }
 
         return redirect()->route('users.index')
             ->with('success', 'User created successfully');
@@ -56,7 +65,8 @@ class UserController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        return view('users.edit', compact('user'));
+        $wards = Ward::orderBy('name')->get();
+        return view('users.edit', compact('user', 'wards'));
     }
 
     public function update(Request $request, User $user)
@@ -70,6 +80,8 @@ class UserController extends Controller
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'password' => ['nullable', 'confirmed', Password::defaults()],
             'role' => 'required|in:admin,canvasser,ward_admin',
+            'wards' => 'nullable|array',
+            'wards.*' => 'exists:wards,id',
         ]);
 
         if (!empty($validated['password'])) {
@@ -79,6 +91,13 @@ class UserController extends Controller
         }
 
         $user->update($validated);
+        
+        // Sync wards for non-admin users
+        if ($request->has('wards')) {
+            $user->wards()->sync($request->wards);
+        } else {
+            $user->wards()->sync([]);
+        }
 
         return redirect()->route('users.index')
             ->with('success', 'User updated successfully');

@@ -21,9 +21,11 @@
                 @if($streets->isEmpty())
                     <div class="text-center py-12">
                         <p class="text-gray-600 mb-4">No streets in this ward yet.</p>
-                        <a href="{{ route('import.index') }}" class="bg-[#6AB023] hover:bg-[#5a9620] text-white px-6 py-2 rounded">
-                            Import Addresses
-                        </a>
+                        @if(auth()->user()->isAdmin())
+                            <a href="{{ route('import.index') }}" class="bg-[#6AB023] hover:bg-[#5a9620] text-white px-6 py-2 rounded">
+                                Import Addresses
+                            </a>
+                        @endif
                     </div>
                 @else
                     <!-- Search/Filter Input -->

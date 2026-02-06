@@ -45,6 +45,24 @@
                         @enderror
                     </div>
 
+                    <div id="wardsSection" class="hidden">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Assigned Wards</label>
+                        <p class="text-xs text-gray-600 mb-2">Select the wards this user can access (Ward Admins and Canvassers only)</p>
+                        <div class="border border-gray-300 rounded p-3 max-h-60 overflow-y-auto space-y-2">
+                            @foreach($wards as $ward)
+                                <label class="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                    <input type="checkbox" name="wards[]" value="{{ $ward->id }}" 
+                                           {{ in_array($ward->id, old('wards', [])) ? 'checked' : '' }}
+                                           class="rounded text-[#6AB023] focus:ring-[#6AB023]">
+                                    <span class="text-sm text-gray-700">{{ $ward->name }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                        @error('wards')
+                            <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     <div>
                         <label for="password" class="block text-sm font-semibold text-gray-700 mb-2">Password</label>
                         <input type="password" name="password" id="password" required
@@ -74,3 +92,23 @@
         </div>
     </div>
 </x-app-layout>
+
+<script>
+// Show/hide wards section based on role
+document.getElementById('role').addEventListener('change', function() {
+    const wardsSection = document.getElementById('wardsSection');
+    if (this.value === 'ward_admin' || this.value === 'canvasser') {
+        wardsSection.classList.remove('hidden');
+    } else {
+        wardsSection.classList.add('hidden');
+    }
+});
+
+// Trigger on page load in case of validation errors
+document.addEventListener('DOMContentLoaded', function() {
+    const roleSelect = document.getElementById('role');
+    if (roleSelect.value === 'ward_admin' || roleSelect.value === 'canvasser') {
+        document.getElementById('wardsSection').classList.remove('hidden');
+    }
+});
+</script>

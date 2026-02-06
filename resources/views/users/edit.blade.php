@@ -45,6 +45,24 @@
                         @enderror
                     </div>
 
+                    <div id="wardsSection" class="{{ in_array($user->role, ['ward_admin', 'canvasser']) ? '' : 'hidden' }}">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Assigned Wards</label>
+                        <p class="text-xs text-gray-600 mb-2">Select the wards this user can access (Ward Admins and Canvassers only)</p>
+                        <div class="border border-gray-300 rounded p-3 max-h-60 overflow-y-auto space-y-2">
+                            @foreach($wards as $ward)
+                                <label class="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                    <input type="checkbox" name="wards[]" value="{{ $ward->id }}" 
+                                           {{ in_array($ward->id, old('wards', $user->wards->pluck('id')->toArray())) ? 'checked' : '' }}
+                                           class="rounded text-[#6AB023] focus:ring-[#6AB023]">
+                                    <span class="text-sm text-gray-700">{{ $ward->name }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                        @error('wards')
+                            <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     <div class="border-t border-gray-200 pt-6">
                         <p class="text-sm font-semibold text-gray-700 mb-4">Change Password (optional)</p>
                         
@@ -80,3 +98,15 @@
         </div>
     </div>
 </x-app-layout>
+
+<script>
+// Show/hide wards section based on role
+document.getElementById('role').addEventListener('change', function() {
+    const wardsSection = document.getElementById('wardsSection');
+    if (this.value === 'ward_admin' || this.value === 'canvasser') {
+        wardsSection.classList.remove('hidden');
+    } else {
+        wardsSection.classList.add('hidden');
+    }
+});
+</script>
