@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Address;
+use App\Models\FeatureFlag;
 use App\Models\KnockResult;
 use App\Models\User;
 use App\Models\Ward;
@@ -18,6 +19,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Seed feature flags (safe to run multiple times)
+        $this->call(FeatureFlagSeeder::class);
+
         // Create sample users
         User::create([
             'name' => 'Admin User',

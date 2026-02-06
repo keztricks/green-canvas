@@ -63,6 +63,7 @@
                         @enderror
                     </div>
 
+                    @if(\App\Models\FeatureFlag::isEnabled('export_email_schedules'))
                     <div id="exportSchedulesSection" class="{{ in_array($user->role, ['ward_admin', 'canvasser']) ? '' : 'hidden' }} border-t border-gray-200 pt-6">
                         <p class="text-sm font-semibold text-gray-700 mb-4">Export Email Schedule</p>
                         <p class="text-xs text-gray-600 mb-4">Configure automatic export email frequency for each assigned ward</p>
@@ -101,6 +102,7 @@
                             @endforeach
                         </div>
                     </div>
+                    @endif
 
                     <div class="border-t border-gray-200 pt-6">
                         <p class="text-sm font-semibold text-gray-700 mb-4">Change Password (optional)</p>

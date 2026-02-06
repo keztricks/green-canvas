@@ -12,7 +12,7 @@
             <div class="bg-white rounded-lg shadow p-6">
                 <h2 class="text-2xl font-bold mb-4 text-gray-800">Profile Information</h2>
                 <p class="text-sm text-gray-600 mb-4">Update your account's profile information and email address.</p>
-
+                
                 <form action="{{ route('settings.profile.update') }}" method="POST">
                     @csrf
                     @method('PATCH')
@@ -57,7 +57,7 @@
             <div class="bg-white rounded-lg shadow p-6">
                 <h2 class="text-2xl font-bold mb-4 text-gray-800">Update Password</h2>
                 <p class="text-sm text-gray-600 mb-4">Ensure your account is using a long, random password to stay secure.</p>
-
+                
                 <form action="{{ route('settings.password.update') }}" method="POST">
                     @csrf
                     @method('PATCH')
@@ -106,6 +106,7 @@
             </div>
 
             <!-- Export Schedule Settings -->
+            @if(\App\Models\FeatureFlag::isEnabled('export_email_schedules'))
             <div class="bg-white rounded-lg shadow p-6">
                 <h2 class="text-2xl font-bold mb-4 text-gray-800">Export Email Schedule</h2>
                 <p class="text-sm text-gray-600 mb-4">
@@ -139,7 +140,7 @@
                                     </div>
                                     <div class="flex gap-2">
                                         <label class="inline-flex items-center px-4 py-2 border rounded cursor-pointer transition-colors
-                                            {{ $currentFrequency === 'none' ? 'bg-[#6AB023] text-white border-[#6AB023]' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
+                                                {{ $currentFrequency === 'none' ? 'bg-[#6AB023] text-white border-[#6AB023]' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
                                             <input type="radio" 
                                                    name="schedules[{{ $ward->id }}]" 
                                                    value="none" 
@@ -148,7 +149,7 @@
                                             <span class="text-sm font-medium">None</span>
                                         </label>
                                         <label class="inline-flex items-center px-4 py-2 border rounded cursor-pointer transition-colors
-                                            {{ $currentFrequency === 'daily' ? 'bg-[#6AB023] text-white border-[#6AB023]' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
+                                                {{ $currentFrequency === 'daily' ? 'bg-[#6AB023] text-white border-[#6AB023]' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
                                             <input type="radio" 
                                                    name="schedules[{{ $ward->id }}]" 
                                                    value="daily" 
@@ -157,7 +158,7 @@
                                             <span class="text-sm font-medium">Daily</span>
                                         </label>
                                         <label class="inline-flex items-center px-4 py-2 border rounded cursor-pointer transition-colors
-                                            {{ $currentFrequency === 'weekly' ? 'bg-[#6AB023] text-white border-[#6AB023]' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
+                                                {{ $currentFrequency === 'weekly' ? 'bg-[#6AB023] text-white border-[#6AB023]' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
                                             <input type="radio" 
                                                    name="schedules[{{ $ward->id }}]" 
                                                    value="weekly" 
@@ -178,6 +179,7 @@
                     </form>
                 @endif
             </div>
+            @endif
 
             <!-- Delete Account -->
             <div class="bg-white rounded-lg shadow p-6">
