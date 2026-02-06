@@ -77,6 +77,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user can access exports (admins and ward admins only).
+     */
+    public function canAccessExports(): bool
+    {
+        return $this->isAdmin() || $this->role === self::ROLE_WARD_ADMIN;
+    }
+
+    /**
      * Get the wards assigned to this user.
      */
     public function wards()
