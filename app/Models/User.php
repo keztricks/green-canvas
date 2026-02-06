@@ -93,6 +93,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the export schedules for this user.
+     */
+    public function exportSchedules()
+    {
+        return $this->hasMany(UserWardExportSchedule::class);
+    }
+
+    /**
      * Check if user has access to a specific ward.
      */
     public function hasAccessToWard($wardId): bool
