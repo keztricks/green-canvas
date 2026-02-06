@@ -6,6 +6,7 @@ use App\Http\Controllers\ElectionController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\UserSettingsController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -17,9 +18,17 @@ Route::get('/dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    // Redirect old profile routes to settings
+    Route::get('/profile', fn() => redirect()->route('settings.index'))->name('profile.edit');
+    Route::patch('/profile', fn() => redirect()->route('settings.index'))->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Settings routes (combines profile and preferences)
+    Route::get('/settings', [UserSettingsController::class, 'index'])->name('settings.index');
+    Route::patch('/settings/profile', [UserSettingsController::class, 'updateProfile'])->name('settings.profile.update');
+    Route::patch('/settings/password', [UserSettingsController::class, 'updatePassword'])->name('settings.password.update');
+    Route::post('/settings/export-schedules', [UserSettingsController::class, 'updateExportSchedules'])->name('settings.export-schedules.update');
+    Route::delete('/settings', [UserSettingsController::class, 'destroy'])->name('settings.destroy');
 
     // Canvassing routes
     Route::get('/canvassing', [CanvassingController::class, 'index'])->name('canvassing.index');
