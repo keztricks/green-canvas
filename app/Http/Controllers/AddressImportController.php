@@ -26,6 +26,7 @@ class AddressImportController extends Controller
         // Map of ward reference files
         $referenceFiles = [
             'Wainhouse' => storage_path('app/ward-references/wainhouse.csv'),
+            'Hebden Bridge & Todmorden East' => storage_path('app/ward-references/hebden-bridge-todmorden-east.csv'),
         ];
         
         $postcodeToStreet = [];
@@ -147,7 +148,7 @@ class AddressImportController extends Controller
                     // Find town from address fields
                     $town = 'Halifax';
                     foreach ($addressFields as $field) {
-                        if (preg_match('/^(Halifax|Sowerby Bridge|Copley)/i', $field)) {
+                        if (preg_match('/^(Halifax|Sowerby Bridge|Copley|Hebden Bridge|Todmorden|Charlestown|Mytholmroyd|Wainstalls|Pecket Well|Midgley)/i', $field)) {
                             $town = $field;
                             break;
                         }
@@ -215,7 +216,7 @@ class AddressImportController extends Controller
             if (empty($trimmed)) continue;
             
             // Skip if it's just a town name or postcode
-            if (preg_match('/^(Halifax|Sowerby Bridge|Copley|HX\d)/i', $trimmed)) continue;
+            if (preg_match('/^(Halifax|Sowerby Bridge|Copley|Hebden Bridge|Todmorden|Charlestown|Mytholmroyd|Wainstalls|Pecket Well|Midgley|HX\d)/i', $trimmed)) continue;
             
             // If this field contains the street name, extract the part before it
             if ($streetName && stripos($trimmed, $streetName) !== false) {
