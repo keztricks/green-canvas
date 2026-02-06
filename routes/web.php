@@ -4,6 +4,7 @@ use App\Http\Controllers\AddressImportController;
 use App\Http\Controllers\CanvassingController;
 use App\Http\Controllers\ElectionController;
 use App\Http\Controllers\ExportController;
+use App\Http\Controllers\FeatureFlagController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserSettingsController;
@@ -58,6 +59,10 @@ Route::middleware('auth')->group(function () {
 
         // User management routes
         Route::resource('users', UserController::class);
+
+        // Feature flag routes
+        Route::get('/feature-flags', [FeatureFlagController::class, 'index'])->name('feature-flags.index');
+        Route::patch('/feature-flags/{flag}/toggle', [FeatureFlagController::class, 'toggle'])->name('feature-flags.toggle');
 
         // Election management routes
         Route::get('/elections', [ElectionController::class, 'index'])->name('elections.index');

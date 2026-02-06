@@ -57,6 +57,10 @@ npm run build
 echo "🗄️  Running database migrations..."
 php artisan migrate --force
 
+# Seed feature flags (safe to run, updates existing flags)
+echo "🚩 Updating feature flags..."
+php artisan db:seed --class=FeatureFlagSeeder --force
+
 # Clear and cache configuration
 echo "🧹 Clearing caches..."
 php artisan cache:clear
