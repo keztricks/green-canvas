@@ -17,6 +17,11 @@ class ExportController extends Controller
     {
         $user = auth()->user();
         
+        // Only admins and ward admins can access exports
+        if (!$user->canAccessExports()) {
+            abort(403, 'You do not have permission to access exports.');
+        }
+        
         // Filter exports based on user's ward access
         $query = Export::with('ward')->orderBy('created_at', 'desc');
         
@@ -32,6 +37,11 @@ class ExportController extends Controller
     public function create()
     {
         $user = auth()->user();
+        
+        // Only admins and ward admins can access exports
+        if (!$user->canAccessExports()) {
+            abort(403, 'You do not have permission to access exports.');
+        }
         
         // Build query for total results count based on user's ward access
         $query = KnockResult::query();
@@ -70,6 +80,11 @@ class ExportController extends Controller
     public function store(Request $request)
     {
         $user = auth()->user();
+        
+        // Only admins and ward admins can access exports
+        if (!$user->canAccessExports()) {
+            abort(403, 'You do not have permission to access exports.');
+        }
         
         $validated = $request->validate([
             'version' => 'required|string|max:50|unique:exports,version',
@@ -154,6 +169,11 @@ class ExportController extends Controller
     {
         $user = auth()->user();
         
+        // Only admins and ward admins can access exports
+        if (!$user->canAccessExports()) {
+            abort(403, 'You do not have permission to access exports.');
+        }
+        
         // Verify user has access to this export
         if (!$user->isAdmin()) {
             // If export has a ward filter, check access to that ward
@@ -175,6 +195,11 @@ class ExportController extends Controller
     public function destroy(Export $export)
     {
         $user = auth()->user();
+        
+        // Only admins and ward admins can access exports
+        if (!$user->canAccessExports()) {
+            abort(403, 'You do not have permission to access exports.');
+        }
         
         // Verify user has access to delete this export
         if (!$user->isAdmin()) {

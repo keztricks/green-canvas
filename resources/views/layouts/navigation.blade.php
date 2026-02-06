@@ -15,9 +15,11 @@
                     <x-nav-link :href="route('canvassing.index')" :active="request()->routeIs('canvassing.*')" class="text-white hover:text-gray-200">
                         {{ __('Canvas') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('exports.index')" :active="request()->routeIs('exports.*')" class="text-white hover:text-gray-200">
-                        {{ __('Exports') }}
-                    </x-nav-link>
+                    @if(auth()->user()->canAccessExports())
+                        <x-nav-link :href="route('exports.index')" :active="request()->routeIs('exports.*')" class="text-white hover:text-gray-200">
+                            {{ __('Exports') }}
+                        </x-nav-link>
+                    @endif
                     @if(auth()->user()->isAdmin())
                         <x-dropdown align="right" width="48">
                             <x-slot name="trigger">
@@ -99,9 +101,11 @@
             <x-responsive-nav-link :href="route('canvassing.index')" :active="request()->routeIs('canvassing.*')">
                 {{ __('Canvas') }}
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('exports.index')" :active="request()->routeIs('exports.*')">
-                {{ __('Exports') }}
-            </x-responsive-nav-link>
+            @if(auth()->user()->canAccessExports())
+                <x-responsive-nav-link :href="route('exports.index')" :active="request()->routeIs('exports.*')">
+                    {{ __('Exports') }}
+                </x-responsive-nav-link>
+            @endif
             @if(auth()->user()->isAdmin())
                 <div class="border-t border-white border-opacity-20 mt-2 pt-2">
                     <div class="px-3 py-2 text-xs font-semibold text-white text-opacity-60 uppercase">Management</div>
