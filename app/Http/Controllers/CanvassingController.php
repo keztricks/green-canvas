@@ -12,11 +12,19 @@ class CanvassingController extends Controller
 {
     public function index()
     {
-        // Get all wards with address counts
-        $wards = Ward::active()
-            ->withCount('addresses')
-            ->orderBy('name')
-            ->get();
+        $user = auth()->user();
+        
+        // Get wards based on user role
+        $query = Ward::active()->withCount('addresses')->orderBy('name');
+        
+        // If not admin, filter to only assigned wards
+        if (!$user->isAdmin()) {
+            $query->whereHas('users', function($q) use ($user) {
+                $q->where('users.id', $user->id);
+            });
+        }
+        
+        $wards = $query->get();
 
         return view('canvassing.index', compact('wards'));
     }
@@ -24,6 +32,11 @@ class CanvassingController extends Controller
     public function ward($wardId)
     {
         $ward = Ward::findOrFail($wardId);
+        
+        // Check if user has access to this ward
+        if (!auth()->user()->hasAccessToWard($wardId)) {
+            abort(403, 'You do not have access to this ward.');
+        }
         
         // Get all unique streets in this ward with address counts
         $streets = Address::byWard($wardId)
@@ -41,6 +54,11 @@ class CanvassingController extends Controller
     public function allStreets($wardId)
     {
         $ward = Ward::findOrFail($wardId);
+        
+        // Check if user has access to this ward
+        if (!auth()->user()->hasAccessToWard($wardId)) {
+            abort(403, 'You do not have access to this ward.');
+        }
         
         $query = Address::byWard($wardId)
             ->with(['knockResults' => function($query) {
@@ -98,6 +116,11 @@ class CanvassingController extends Controller
     public function street($wardId, $streetName)
     {
         $ward = Ward::findOrFail($wardId);
+        
+        // Check if user has access to this ward
+        if (!auth()->user()->hasAccessToWard($wardId)) {
+            abort(403, 'You do not have access to this ward.');
+        }
         
         $addresses = Address::byWard($wardId)
             ->byStreet($streetName)

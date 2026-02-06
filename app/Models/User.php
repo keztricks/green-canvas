@@ -77,6 +77,28 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the wards assigned to this user.
+     */
+    public function wards()
+    {
+        return $this->belongsToMany(Ward::class);
+    }
+
+    /**
+     * Check if user has access to a specific ward.
+     */
+    public function hasAccessToWard($wardId): bool
+    {
+        // Admins have access to all wards
+        if ($this->isAdmin()) {
+            return true;
+        }
+        
+        // Ward admins and canvassers only have access to their assigned wards
+        return $this->wards()->where('wards.id', $wardId)->exists();
+    }
+
+    /**
      * Get available roles.
      */
     public static function roles(): array

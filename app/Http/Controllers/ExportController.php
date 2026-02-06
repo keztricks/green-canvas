@@ -15,13 +15,35 @@ class ExportController extends Controller
 {
     public function index()
     {
-        $exports = Export::with('ward')->orderBy('created_at', 'desc')->get();
+        $user = auth()->user();
+        
+        // Filter exports based on user's ward access
+        $query = Export::with('ward')->orderBy('created_at', 'desc');
+        
+        if (!$user->isAdmin()) {
+            $userWardIds = $user->wards->pluck('id')->toArray();
+            $query->whereIn('ward_id', $userWardIds);
+        }
+        
+        $exports = $query->get();
         return view('exports.index', compact('exports'));
     }
 
     public function create()
     {
-        $totalResults = KnockResult::count();
+        $user = auth()->user();
+        
+        // Build query for total results count based on user's ward access
+        $query = KnockResult::query();
+        
+        if (!$user->isAdmin()) {
+            $userWardIds = $user->wards->pluck('id')->toArray();
+            $query->whereHas('address', function($q) use ($userWardIds) {
+                $q->whereIn('ward_id', $userWardIds);
+            });
+        }
+        
+        $totalResults = $query->count();
         $lastExport = Export::latest()->first();
         
         // Suggest next version number
@@ -31,13 +53,24 @@ class ExportController extends Controller
             $nextVersion = 'v' . ((int)($matches[1] ?? 0) + 1);
         }
 
-        $wards = \App\Models\Ward::orderBy('name')->get();
+        // Filter wards based on user's access
+        $wardsQuery = \App\Models\Ward::orderBy('name');
+        
+        if (!$user->isAdmin()) {
+            $wardsQuery->whereHas('users', function($q) use ($user) {
+                $q->where('users.id', $user->id);
+            });
+        }
+        
+        $wards = $wardsQuery->get();
 
         return view('exports.create', compact('totalResults', 'nextVersion', 'wards'));
     }
 
     public function store(Request $request)
     {
+        $user = auth()->user();
+        
         $validated = $request->validate([
             'version' => 'required|string|max:50|unique:exports,version',
             'notes' => 'nullable|string|max:500',
@@ -46,10 +79,21 @@ class ExportController extends Controller
             'date_to' => 'nullable|date|after_or_equal:date_from',
             'ward_id' => 'nullable|exists:wards,id',
         ]);
+        
+        // Verify user has access to the selected ward
+        if (!empty($validated['ward_id']) && !$user->hasAccessToWard($validated['ward_id'])) {
+            abort(403, 'You do not have access to this ward.');
+        }
 
         // Build query with optional filters
         $query = KnockResult::with(['address', 'user'])
             ->join('addresses', 'knock_results.address_id', '=', 'addresses.id');
+        
+        // Restrict to user's wards if not admin
+        if (!$user->isAdmin()) {
+            $userWardIds = $user->wards->pluck('id')->toArray();
+            $query->whereIn('addresses.ward_id', $userWardIds);
+        }
         
         // Apply date filters
         if (!empty($validated['date_from'])) {
@@ -108,6 +152,16 @@ class ExportController extends Controller
 
     public function download(Export $export)
     {
+        $user = auth()->user();
+        
+        // Verify user has access to this export
+        if (!$user->isAdmin()) {
+            // If export has a ward filter, check access to that ward
+            if ($export->ward_id && !$user->hasAccessToWard($export->ward_id)) {
+                abort(403, 'You do not have access to this export.');
+            }
+        }
+        
         $filePath = 'exports/' . $export->filename;
         
         if (!Storage::disk('local')->exists($filePath)) {
@@ -120,6 +174,16 @@ class ExportController extends Controller
 
     public function destroy(Export $export)
     {
+        $user = auth()->user();
+        
+        // Verify user has access to delete this export
+        if (!$user->isAdmin()) {
+            // If export has a ward filter, check access to that ward
+            if ($export->ward_id && !$user->hasAccessToWard($export->ward_id)) {
+                abort(403, 'You do not have access to delete this export.');
+            }
+        }
+        
         // Delete the file
         $filePath = 'exports/' . $export->filename;
         if (Storage::disk('local')->exists($filePath)) {

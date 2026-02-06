@@ -22,6 +22,11 @@ class Ward extends Model
         return $this->belongsToMany(Election::class);
     }
 
+    public function users()
+    {
+        return $this->belongsToMany(User::class);
+    }
+
     public function scopeActive($query)
     {
         return $query->where('active', true);

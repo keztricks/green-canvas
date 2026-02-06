@@ -33,7 +33,7 @@ class DatabaseSeeder extends Seeder
             'role' => User::ROLE_CANVASSER,
         ]);
 
-        User::create([
+        $wardAdmin = User::create([
             'name' => 'Ward Admin User',
             'email' => 'wardadmin@example.com',
             'password' => bcrypt('password'),
@@ -65,6 +65,12 @@ class DatabaseSeeder extends Seeder
         foreach ($wardNames as $wardName) {
             Ward::create(['name' => $wardName]);
         }
+        
+        // Assign some wards to the ward admin user
+        $wardAdmin->wards()->attach([
+            Ward::where('name', 'Wainhouse')->first()->id,
+            Ward::where('name', 'Sowerby Bridge')->first()->id,
+        ]);
         
         // Get Wainhouse ward for sample addresses
         $wainhouseWard = Ward::where('name', 'Wainhouse')->first();
