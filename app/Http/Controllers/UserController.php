@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Ward;
+use App\Models\UserWardExportSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
@@ -66,7 +67,13 @@ class UserController extends Controller
         }
 
         $wards = Ward::orderBy('name')->get();
-        return view('users.edit', compact('user', 'wards'));
+        
+        // Get export schedules for the user
+        $exportSchedules = UserWardExportSchedule::where('user_id', $user->id)
+            ->pluck('frequency', 'ward_id')
+            ->toArray();
+        
+        return view('users.edit', compact('user', 'wards', 'exportSchedules'));
     }
 
     public function update(Request $request, User $user)
@@ -82,6 +89,8 @@ class UserController extends Controller
             'role' => 'required|in:admin,canvasser,ward_admin',
             'wards' => 'nullable|array',
             'wards.*' => 'exists:wards,id',
+            'export_schedules' => 'nullable|array',
+            'export_schedules.*' => 'in:none,daily,weekly',
         ]);
 
         if (!empty($validated['password'])) {
@@ -97,6 +106,19 @@ class UserController extends Controller
             $user->wards()->sync($request->wards);
         } else {
             $user->wards()->sync([]);
+        }
+        
+        // Update export schedules
+        if ($request->has('export_schedules')) {
+            foreach ($request->export_schedules as $wardId => $frequency) {
+                // Only update schedules for wards the user is assigned to
+                if (in_array($wardId, $user->wards->pluck('id')->toArray())) {
+                    UserWardExportSchedule::updateOrCreate(
+                        ['user_id' => $user->id, 'ward_id' => $wardId],
+                        ['frequency' => $frequency]
+                    );
+                }
+            }
         }
 
         return redirect()->route('users.index')
