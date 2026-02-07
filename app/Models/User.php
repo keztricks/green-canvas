@@ -77,11 +77,19 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user is a ward admin.
+     */
+    public function isWardAdmin(): bool
+    {
+        return $this->role === self::ROLE_WARD_ADMIN;
+    }
+
+    /**
      * Check if user can access exports (admins and ward admins only).
      */
     public function canAccessExports(): bool
     {
-        return $this->isAdmin() || $this->role === self::ROLE_WARD_ADMIN;
+        return $this->isAdmin() || $this->isWardAdmin();
     }
 
     /**

@@ -35,11 +35,18 @@
                     <div>
                         <label for="role" class="block text-sm font-semibold text-gray-700 mb-2">Role</label>
                         <select name="role" id="role" required
-                                class="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#6AB023] @error('role') border-red-500 @enderror">
-                            <option value="admin" {{ old('role', $user->role) === 'admin' ? 'selected' : '' }}>Admin</option>
-                            <option value="ward_admin" {{ old('role', $user->role) === 'ward_admin' ? 'selected' : '' }}>Ward Admin</option>
+                                class="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#6AB023] @error('role') border-red-500 @enderror"
+                                {{ auth()->user()->isWardAdmin() ? 'disabled' : '' }}>
+                            @if(auth()->user()->isAdmin())
+                                <option value="admin" {{ old('role', $user->role) === 'admin' ? 'selected' : '' }}>Admin</option>
+                                <option value="ward_admin" {{ old('role', $user->role) === 'ward_admin' ? 'selected' : '' }}>Ward Admin</option>
+                            @endif
                             <option value="canvasser" {{ old('role', $user->role) === 'canvasser' ? 'selected' : '' }}>Canvasser</option>
                         </select>
+                        @if(auth()->user()->isWardAdmin())
+                            <input type="hidden" name="role" value="{{ $user->role }}">
+                            <p class="text-xs text-gray-600 mt-1">Ward admins cannot change user roles</p>
+                        @endif
                         @error('role')
                             <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                         @enderror
