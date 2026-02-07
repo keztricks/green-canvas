@@ -3,9 +3,11 @@
 namespace Database\Seeders;
 
 use App\Models\Address;
-use App\Models\FeatureFlag;
+use App\Models\Election;
+use App\Models\Export;
 use App\Models\KnockResult;
 use App\Models\User;
+use App\Models\UserWardExportSchedule;
 use App\Models\Ward;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -44,6 +46,13 @@ class DatabaseSeeder extends Seeder
             'role' => User::ROLE_WARD_ADMIN,
         ]);
 
+        $canvasser2 = User::create([
+            'name' => 'Canvasser Two',
+            'email' => 'canvasser2@example.com',
+            'password' => bcrypt('password'),
+            'role' => User::ROLE_CANVASSER,
+        ]);
+
         // Create wards
         $wardNames = [
             'Brighouse',
@@ -76,55 +85,95 @@ class DatabaseSeeder extends Seeder
             Ward::where('name', 'Sowerby Bridge')->first()->id,
         ]);
         
-        // Get Wainhouse ward for sample addresses
-        $wainhouseWard = Ward::where('name', 'Wainhouse')->first();
+        // Assign wards to canvasser users
+        $canvasser2->wards()->attach([
+            Ward::where('name', 'Wainhouse')->first()->id,
+        ]);
+
+        // Create elections
+        $generalElection = Election::create([
+            'name' => 'Example General Election',
+            'election_date' => now()->subMonths(6),
+            'type' => 'general',
+            'active' => true,
+        ]);
+        
+        $localElection = Election::create([
+            'name' => 'Example Local Elections',
+            'election_date' => now()->addMonths(3),
+            'type' => 'local',
+            'active' => true,
+        ]);
+        
+        // Attach some wards to the local election
+        $localElection->wards()->attach([
+            Ward::where('name', 'Wainhouse')->first()->id,
+            Ward::where('name', 'Sowerby Bridge')->first()->id,
+            Ward::where('name', 'Park')->first()->id,
+        ]);
+        
+        $byElection = Election::create([
+            'name' => 'Example Elland By-Election',
+            'election_date' => now()->addMonths(1),
+            'type' => 'by-election',
+            'active' => true,
+        ]);
+        
+        // Attach specific ward to by-election
+        $byElection->wards()->attach([
+            Ward::where('name', 'Elland')->first()->id,
+        ]);
 
         // Get created users for knock results
         $users = User::all();
+        
+        // Get all wards
+        $allWards = Ward::all();
+        
+        // Get all elections
+        $elections = Election::all();
+        
+        // Store created addresses for later use
+        $createdAddresses = [];
 
-        // Create sample addresses for different streets in Wainhouse ward
-        $streets = [
+        // Create sample addresses for different streets - distributed across all wards
+        $streetsTemplate = [
             [
-                'street_name' => 'Skircoat Green Road',
-                'town' => 'Halifax',
-                'constituency' => 'Halifax',
-                'houses' => ['253', '273', '275', '277', '279', '283', '285', '287', '287A', '289', '291', '293'],
-                'postcode_prefix' => 'HX3 0B',
+                'street_name' => 'High Street',
+                'houses' => ['1', '3', '5', '7', '9', '11', '13', '15', '17', '19'],
+                'postcode_prefix' => 'HX1 1A',
             ],
             [
-                'street_name' => 'Upper Washer Lane',
-                'town' => 'Halifax',
-                'constituency' => 'Halifax',
-                'houses' => ['39', '41', '43', '44', '45', '46', '47', '48', '49', '50', '52', '54', '58', '60', '62', '64', '68', '70', '76'],
-                'postcode_prefix' => 'HX2 7D',
+                'street_name' => 'Church Lane',
+                'houses' => ['2', '4', '6', '8', '10', '12', '14', '16', '18', '20'],
+                'postcode_prefix' => 'HX2 2B',
             ],
             [
-                'street_name' => 'Wakefield Road',
-                'town' => 'Sowerby Bridge',
-                'constituency' => 'Halifax',
-                'houses' => ['99', '231', '233', '235', '237', '239', '241', '243', '245', '247', '249'],
-                'postcode_prefix' => 'HX6 2U',
-            ],
-            [
-                'street_name' => 'Arden Road',
-                'town' => 'Halifax',
-                'constituency' => 'Halifax',
-                'houses' => ['1', '3', '5', '7', '9', '11', '13', '15', '17', '19', '21', '23', '25', '2', '4', '6', '8', '10', '12', '14', '16', '18', '20', '22', '24'],
-                'postcode_prefix' => 'HX1 3A',
-            ],
-            [
-                'street_name' => 'Washer Lane',
-                'town' => 'Halifax',
-                'constituency' => 'Halifax',
-                'houses' => ['5', '41', 'Birch House', 'Hawthorn House'],
-                'postcode_prefix' => 'HX2 7D',
+                'street_name' => 'Park Road',
+                'houses' => ['21', '23', '25', '27', '29', '31', '33', '35'],
+                'postcode_prefix' => 'HX3 3C',
             ],
         ];
+        
+        // Create streets for each ward
+        $streets = [];
+        foreach ($allWards as $index => $ward) {
+            foreach ($streetsTemplate as $streetTemplate) {
+                $streets[] = [
+                    'ward_id' => $ward->id,
+                    'street_name' => $streetTemplate['street_name'],
+                    'town' => $ward->name,
+                    'constituency' => 'Halifax',
+                    'houses' => $streetTemplate['houses'],
+                    'postcode_prefix' => 'HX' . (($index % 9) + 1) . ' ' . chr(65 + ($index % 26)),
+                ];
+            }
+        }
 
         foreach ($streets as $streetData) {
             foreach ($streetData['houses'] as $index => $houseNumber) {
                 $address = Address::create([
-                    'ward_id' => $wainhouseWard->id,
+                    'ward_id' => $streetData['ward_id'],
                     'house_number' => $houseNumber,
                     'street_name' => $streetData['street_name'],
                     'town' => $streetData['town'],
@@ -132,6 +181,9 @@ class DatabaseSeeder extends Seeder
                     'constituency' => $streetData['constituency'],
                     'sort_order' => (int) preg_replace('/[^0-9]/', '', $houseNumber),
                 ]);
+                
+                // Store address for later use
+                $createdAddresses[] = $address;
 
                 // Add some knock results to a few random addresses
                 if (rand(1, 3) === 1) {
@@ -193,6 +245,68 @@ class DatabaseSeeder extends Seeder
             }
         }
 
-        $this->command->info('Sample addresses and knock results created successfully!');
+        // Add election associations to some addresses (voted/not_voted status)
+        $activeElections = $elections->where('active', true);
+        foreach ($createdAddresses as $address) {
+            // Check if this address is in a ward that has an active election
+            foreach ($activeElections as $election) {
+                // Skip if election has ward restrictions and this address isn't in one of them
+                if ($election->wards->isNotEmpty() && !$election->wards->pluck('id')->contains($address->ward_id)) {
+                    continue;
+                }
+                
+                // 20% chance of having an election association (voting status)
+                if (rand(1, 100) <= 20) {
+                    $statuses = ['voted', 'not_voted', 'unknown'];
+                    $address->elections()->attach($election->id, [
+                        'status' => $statuses[array_rand($statuses)],
+                        'notes' => rand(1, 3) === 1 ? null : ['Postal vote requested', 'Confirmed voter', 'Planning to vote', 'Needs reminder'][array_rand(['Postal vote requested', 'Confirmed voter', 'Planning to vote', 'Needs reminder'])],
+                    ]);
+                }
+            }
+        }
+
+        // Create sample exports
+        $wainhouseWard = Ward::where('name', 'Wainhouse')->first();
+        Export::create([
+            'filename' => 'green-canvas-export-wainhouse-v1.xlsx',
+            'record_count' => 45,
+            'version' => 'v1',
+            'ward_id' => $wainhouseWard->id,
+            'date_from' => now()->subDays(30),
+            'date_to' => now(),
+            'notes' => 'Sample export for Wainhouse ward',
+        ]);
+        
+        Export::create([
+            'filename' => 'green-canvas-export-all-wards-v2.xlsx',
+            'record_count' => 200,
+            'version' => 'v2',
+            'ward_id' => null,
+            'date_from' => now()->subDays(60),
+            'date_to' => now()->subDays(30),
+            'notes' => 'Historical export for all wards',
+        ]);
+
+        // Create export schedules for ward admin
+        UserWardExportSchedule::create([
+            'user_id' => $wardAdmin->id,
+            'ward_id' => $wainhouseWard->id,
+            'frequency' => 'weekly',
+        ]);
+        
+        UserWardExportSchedule::create([
+            'user_id' => $wardAdmin->id,
+            'ward_id' => Ward::where('name', 'Sowerby Bridge')->first()->id,
+            'frequency' => 'none',
+        ]);
+
+        $this->command->info('Sample data created successfully!');
+        $this->command->info('- Users: ' . User::count());
+        $this->command->info('- Wards: ' . Ward::count());
+        $this->command->info('- Addresses: ' . Address::count());
+        $this->command->info('- Knock Results: ' . KnockResult::count());
+        $this->command->info('- Elections: ' . Election::count());
+        $this->command->info('- Exports: ' . Export::count());
     }
 }
