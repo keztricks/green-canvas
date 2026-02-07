@@ -25,6 +25,15 @@ fi
 echo "📋 Enabling maintenance mode..."
 php artisan down
 
+# Identidy if this is beta or production deployment based on directory name
+if [[ "$(basename $(pwd))" == "beta-green.klkp.uk" ]]; then
+    echo "🧪  Deploying to BETA environment"
+    ENVIRONMENT="beta"
+else
+    echo "🚀  Deploying to PRODUCTION environment"
+    ENVIRONMENT="production"
+fi
+
 # Fix permissions for git operations
 echo "🔐 Setting temporary permissions for git..."
 sudo chown -R ec2-user:apache .
@@ -45,12 +54,28 @@ git pull origin "$BRANCH"
 # Set application version from git tag
 echo "📝 Setting application version..."
 VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "dev")
+if [[ "$ENVIRONMENT" == "beta" ]]; then
+    VERSION="$VERSION-beta"
+fi
+
 if grep -q "^APP_VERSION=" .env; then
     sed -i.bak "s/^APP_VERSION=.*/APP_VERSION=$VERSION/" .env && rm .env.bak
 else
     echo "APP_VERSION=$VERSION" >> .env
 fi
 echo "Version set to: $VERSION"
+
+# Grab the latest production database for beta environment
+if [[ "$ENVIRONMENT" == "beta" ]]; then
+    echo "📊 Syncing database from production to beta..."
+    cp /var/www/vhosts/green.klkp.uk/database/database.sqlite database/database.sqlite
+fi
+
+# Backup the production database before running migrations
+if [[ "$ENVIRONMENT" == "production" ]]; then
+    echo "💾 Backing up production database..."
+    cp database/database.sqlite database/$(date +%Y%m%d_%H%M%S)_backup.sqlite
+fi
 
 # Install/update Composer dependencies
 echo "📦 Installing Composer dependencies..."
