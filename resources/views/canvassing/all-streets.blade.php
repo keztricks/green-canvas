@@ -7,11 +7,11 @@
         </a>
     </div>
 
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <div class="mb-6">
-            <p class="text-sm text-gray-600">{{ $ward->name }}</p>
-            <h2 class="text-3xl font-bold mb-2 text-gray-800">All Streets</h2>
-            <p class="text-gray-600">All addresses in this ward</p>
+            <p class="text-sm text-gray-600 dark:text-gray-300">{{ $ward->name }}</p>
+            <h2 class="text-3xl font-bold mb-2 text-gray-800 dark:text-white">All Streets</h2>
+            <p class="text-gray-600 dark:text-gray-300">All addresses in this ward</p>
         </div>
 
         <!-- Add Address Button -->
@@ -28,17 +28,17 @@
                        id="addressSearch"
                        value="{{ old('search', request('search')) }}"
                        placeholder="Search all addresses by street or house number..." 
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6AB023] focus:border-transparent">
-                <p id="searchStatus" class="text-xs text-gray-500 mt-1">Showing {{ $addresses->count() }} of {{ $addresses->total() }} addresses</p>
+                       class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6AB023] focus:border-transparent">
+                <p id="searchStatus" class="text-xs text-gray-500 dark:text-gray-400 mt-1">Showing {{ $addresses->count() }} of {{ $addresses->total() }} addresses</p>
             </div>
             
             @if(auth()->user()->isAdmin())
-            <label class="flex items-center space-x-2 cursor-pointer p-3 bg-gray-50 rounded-lg border border-gray-300 hover:bg-gray-100 transition-colors">
+            <label class="flex items-center space-x-2 cursor-pointer p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
                 <input type="checkbox" id="electionEditToggle" class="w-4 h-4 text-[#6AB023] rounded" onchange="toggleElectionEditing()">
-                <span class="text-sm font-medium text-gray-700">
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-200">
                     <span id="lockIcon">🔒</span> Enable election editing
                 </span>
-                <span class="text-xs text-gray-500 ml-auto">Click to toggle</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400 ml-auto">Click to toggle</span>
             </label>
             @endif
         </div>
@@ -55,7 +55,7 @@
             <button id="loadMoreBtn" onclick="loadMoreAddresses()" class="bg-[#6AB023] hover:bg-[#5a9620] text-white px-6 py-3 rounded-lg">
                 Load More Addresses
             </button>
-            <p class="text-sm text-gray-500 mt-2">Loaded {{ $addresses->count() }} of {{ $addresses->total() }} addresses</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">Loaded {{ $addresses->count() }} of {{ $addresses->total() }} addresses</p>
         </div>
         @endif
     </div>
@@ -255,7 +255,7 @@ function performSearch(searchTerm) {
         
         if (data.addresses.length === 0) {
             document.getElementById('addressesList').innerHTML = `
-                <div class="text-center py-12 text-gray-500">
+                <div class="text-center py-12 text-gray-500 dark:text-gray-400">
                     <p>No addresses found matching "${searchTerm}"</p>
                 </div>
             `;
@@ -336,11 +336,11 @@ function toggleAddressModal() {
 </script>
 
 <!-- Add Address Modal -->
-<div id="addAddressModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+<div id="addAddressModal" class="hidden fixed inset-0 bg-gray-600 dark:bg-gray-900 bg-opacity-50 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border border-gray-200 dark:border-gray-700 w-full max-w-2xl shadow-lg rounded-md bg-white dark:bg-gray-800">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold text-gray-900">Add Missing Address</h3>
-            <button onclick="toggleAddressModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white">Add Missing Address</h3>
+            <button onclick="toggleAddressModal()" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-2xl">&times;</button>
         </div>
 
         <form action="{{ route('address.store') }}" method="POST" class="space-y-4">
@@ -349,45 +349,45 @@ function toggleAddressModal() {
 
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">House Number *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">House Number *</label>
                     <input type="text" 
                            name="house_number" 
                            required
                            placeholder="e.g. 12 or 12a"
-                           class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+                           class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-3 py-2 text-sm">
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Postcode *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Postcode *</label>
                     <input type="text" 
                            name="postcode" 
                            required
                            placeholder="e.g. HX1 3AB"
-                           class="w-full border border-gray-300 rounded px-3 py-2 text-sm uppercase">
+                           class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-3 py-2 text-sm uppercase">
                 </div>
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Street Name *</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Street Name *</label>
                 <input type="text" 
                        name="street_name" 
                        required
-                       class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-3 py-2 text-sm">
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Town *</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Town *</label>
                 <input type="text" 
                        name="town" 
                        required
                        value="Halifax"
-                       class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-3 py-2 text-sm">
             </div>
 
             <div class="flex justify-end gap-3 pt-4">
                 <button type="button" 
                         onclick="toggleAddressModal()" 
-                        class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">
+                        class="bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-800 dark:text-white px-4 py-2 rounded">
                     Cancel
                 </button>
                 <button type="submit" 

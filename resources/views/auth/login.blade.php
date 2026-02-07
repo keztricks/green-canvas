@@ -1,7 +1,7 @@
 <x-guest-layout>
     <div class="mb-6">
-        <h2 class="text-2xl font-bold text-gray-800 text-center">Sign In</h2>
-        <p class="text-sm text-gray-600 text-center mt-1">Enter your credentials to access your account</p>
+        <h2 class="text-2xl font-bold text-gray-800 dark:text-white text-center">Sign In</h2>
+        <p class="text-sm text-gray-600 dark:text-gray-300 text-center mt-1">Enter your credentials to access your account</p>
     </div>
 
     <!-- Session Status -->
@@ -32,8 +32,8 @@
         <!-- Remember Me -->
         <div class="block mt-4">
             <label for="remember_me" class="inline-flex items-center">
-                <input id="remember_me" type="checkbox" class="rounded border-gray-300 text-[#6AB023] shadow-sm focus:ring-[#6AB023]" name="remember">
-                <span class="ms-2 text-sm text-gray-600">{{ __('Remember me') }}</span>
+                <input id="remember_me" type="checkbox" class="rounded border-gray-300 dark:border-gray-600 text-[#6AB023] shadow-sm focus:ring-[#6AB023]" name="remember">
+                <span class="ms-2 text-sm text-gray-600 dark:text-gray-300">{{ __('Remember me') }}</span>
             </label>
         </div>
 

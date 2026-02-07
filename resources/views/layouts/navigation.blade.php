@@ -73,6 +73,29 @@
                     </x-slot>
 
                     <x-slot name="content">
+                        @if(\App\Models\FeatureFlag::isEnabled('dark_mode'))
+                        <!-- Theme Selector -->
+                        <div class="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
+                            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
+                                Theme
+                            </div>
+                            <div class="flex gap-1">
+                                <button data-theme-option="light" 
+                                        class="flex-1 px-2 py-1.5 text-xs rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center gap-1">
+                                    <span class="theme-check hidden">✓</span> ☀️ Light
+                                </button>
+                                <button data-theme-option="dark" 
+                                        class="flex-1 px-2 py-1.5 text-xs rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center gap-1">
+                                    <span class="theme-check hidden">✓</span> 🌙 Dark
+                                </button>
+                                <button data-theme-option="system" 
+                                        class="flex-1 px-2 py-1.5 text-xs rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center gap-1">
+                                    <span class="theme-check hidden">✓</span> 💻 Auto
+                                </button>
+                            </div>
+                        </div>
+                        @endif
+
                         <x-dropdown-link :href="route('settings.index')">
                             {{ __('Settings') }}
                         </x-dropdown-link>
