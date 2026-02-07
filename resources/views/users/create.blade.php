@@ -36,8 +36,10 @@
                         <select name="role" id="role" required
                                 class="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#6AB023] @error('role') border-red-500 @enderror">
                             <option value="">Select Role</option>
-                            <option value="admin" {{ old('role') === 'admin' ? 'selected' : '' }}>Admin</option>
-                            <option value="ward_admin" {{ old('role') === 'ward_admin' ? 'selected' : '' }}>Ward Admin</option>
+                            @if(auth()->user()->isAdmin())
+                                <option value="admin" {{ old('role') === 'admin' ? 'selected' : '' }}>Admin</option>
+                                <option value="ward_admin" {{ old('role') === 'ward_admin' ? 'selected' : '' }}>Ward Admin</option>
+                            @endif
                             <option value="canvasser" {{ old('role') === 'canvasser' ? 'selected' : '' }}>Canvasser</option>
                         </select>
                         @error('role')

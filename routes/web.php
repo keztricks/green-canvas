@@ -51,14 +51,14 @@ Route::middleware('auth')->group(function () {
     Route::delete('/exports/{export}', [ExportController::class, 'destroy'])->name('exports.destroy');
 
     // Admin-only routes
+    // User management routes (admins and ward admins)
+    Route::resource('users', UserController::class);
+
     Route::middleware('admin')->group(function () {
         // Import routes
         Route::get('/import', [AddressImportController::class, 'index'])->name('import.index');
         Route::post('/import', [AddressImportController::class, 'store'])->name('import.store');
         Route::delete('/import/clear', [AddressImportController::class, 'clear'])->name('import.clear');
-
-        // User management routes
-        Route::resource('users', UserController::class);
 
         // Feature flag routes
         Route::get('/feature-flags', [FeatureFlagController::class, 'index'])->name('feature-flags.index');

@@ -20,6 +20,11 @@
                             {{ __('Exports') }}
                         </x-nav-link>
                     @endif
+                    @if(auth()->user()->isWardAdmin())
+                        <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')" class="text-white hover:text-gray-200">
+                            {{ __('Users') }}
+                        </x-nav-link>
+                    @endif
                     @if(auth()->user()->isAdmin())
                         <x-dropdown align="right" width="48">
                             <x-slot name="trigger">
@@ -107,6 +112,11 @@
             @if(auth()->user()->canAccessExports())
                 <x-responsive-nav-link :href="route('exports.index')" :active="request()->routeIs('exports.*')">
                     {{ __('Exports') }}
+                </x-responsive-nav-link>
+            @endif
+            @if(auth()->user()->isWardAdmin())
+                <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
+                    {{ __('Users') }}
                 </x-responsive-nav-link>
             @endif
             @if(auth()->user()->isAdmin())

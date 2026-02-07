@@ -77,11 +77,27 @@
                                         </td>
                                         <td class="px-4 py-4">
                                             <div class="flex justify-end items-center gap-3">
-                                                <a href="{{ route('users.edit', $user) }}" 
-                                                   class="text-[#6AB023] hover:text-[#5a9620] font-medium text-sm">
-                                                    Edit
-                                                </a>
-                                                @if($user->id !== auth()->id())
+                                                @php
+                                                    // Determine if current user can edit this user
+                                                    $canEdit = auth()->user()->isAdmin() || 
+                                                               (auth()->user()->isWardAdmin() && 
+                                                                !$user->isAdmin() && 
+                                                                (!empty(array_intersect($userWardIds ?? [], $user->wards->pluck('id')->toArray())) || $user->wards->isEmpty()));
+                                                    
+                                                    // Only admins can delete users
+                                                    $canDelete = auth()->user()->isAdmin() && $user->id !== auth()->id();
+                                                @endphp
+                                                
+                                                @if($canEdit)
+                                                    <a href="{{ route('users.edit', $user) }}" 
+                                                       class="text-[#6AB023] hover:text-[#5a9620] font-medium text-sm">
+                                                        Edit
+                                                    </a>
+                                                @else
+                                                    <span class="text-gray-400 text-sm">-</span>
+                                                @endif
+                                                
+                                                @if($canDelete)
                                                     <form action="{{ route('users.destroy', $user) }}" method="POST" class="flex" 
                                                           onsubmit="return confirm('Are you sure you want to delete {{ $user->name }}?');">
                                                         @csrf
@@ -90,7 +106,7 @@
                                                             Delete
                                                         </button>
                                                     </form>
-                                                @else
+                                                @elseif($user->id === auth()->id())
                                                     <span class="text-gray-400 text-sm">(You)</span>
                                                 @endif
                                             </div>
