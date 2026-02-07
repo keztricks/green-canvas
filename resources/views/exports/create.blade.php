@@ -76,6 +76,18 @@
                 
                 <div class="space-y-4">
                     <div>
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="checkbox" 
+                                   name="include_not_knocked" 
+                                   value="1"
+                                   {{ old('include_not_knocked') ? 'checked' : '' }}
+                                   class="rounded border-gray-300 text-[#6AB023] focus:ring-[#6AB023]">
+                            <span class="text-sm font-medium text-gray-700">Include addresses that have not been knocked</span>
+                        </label>
+                        <p class="text-xs text-gray-500 mt-1 ml-6">When checked, the export will include all addresses in the selected scope, even those without any knock results</p>
+                    </div>
+                    
+                    <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             Ward
                         </label>
