@@ -212,13 +212,22 @@ class ExportController extends Controller
         
         $totalAddresses = $addressQuery->count();
 
+        // Get ward name for filename if specific ward selected
+        $wardName = '';
+        if (!empty($validated['ward_id'])) {
+            $ward = \App\Models\Ward::find($validated['ward_id']);
+            if ($ward) {
+                $wardName = '_' . str_replace(' ', '_', $ward->name);
+            }
+        }
+
         // Create filename with timestamp
         $extension = $validated['format'];
-        $filename = 'knock_results_' . $validated['version'] . '_' . now()->format('Y-m-d_His') . '.' . $extension;
+        $filename = 'knock_results_' . $validated['version'] . $wardName . '_' . now()->format('Y-m-d_His') . '.' . $extension;
         
         // Generate file content based on format
         if ($validated['format'] === 'xlsx') {
-            $filePath = $this->generateXLSX($results, $filename, $totalAddresses);
+            $filePath = $this->generateXLSX($results, $filename, $totalAddresses, $validated['ward_id'] ?? null);
         } else {
             $csvContent = $this->generateCSV($results);
             Storage::disk('local')->put('exports/' . $filename, $csvContent);
@@ -306,7 +315,7 @@ class ExportController extends Controller
         $csv[] = [
             'House Number',
             'Street Name',
-            'Town',
+            'Ward',
             'Postcode',
             'Voting Intention',
             'Likelihood',
@@ -455,17 +464,33 @@ class ExportController extends Controller
         return $labels[$response] ?? ucfirst($response);
     }
 
-    private function generateXLSX($groupedResults, $filename, $totalAddresses = null)
+    private function generateXLSX($groupedResults, $filename, $totalAddresses = null, $wardId = null)
     {
         $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Knock Results');
+        
+        // Create summary sheet first if needed (so it appears as first tab)
+        if ($totalAddresses !== null) {
+            // Remove the default worksheet
+            $spreadsheet->removeSheetByIndex(0);
+            // Create summary sheet
+            $summarySheet = $spreadsheet->createSheet(0);
+            $summarySheet->setTitle('Summary');
+            $spreadsheet->setActiveSheetIndex(0);
+            // Populate summary data
+            $this->populateSummarySheet($summarySheet, $groupedResults, $totalAddresses, $wardId);
+            // Create new sheet for data
+            $sheet = $spreadsheet->createSheet(1);
+            $sheet->setTitle('Knock Results');
+        } else {
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Knock Results');
+        }
         
         // Header row
         $headers = [
             'House Number',
             'Street Name',
-            'Town',
+            'Ward',
             'Postcode',
             'Voting Intention',
             'Likelihood',
@@ -579,9 +604,9 @@ class ExportController extends Controller
         $lastRow = $row - 1;
         $sheet->setAutoFilter('A1:L' . $lastRow);
         
-        // Create summary statistics sheet if total addresses provided
+        // Set Summary sheet as active when file opens (if it exists)
         if ($totalAddresses !== null) {
-            $this->createSummarySheet($spreadsheet, $groupedResults, $totalAddresses);
+            $spreadsheet->setActiveSheetIndex(0);
         }
         
         // Save to storage
@@ -596,10 +621,25 @@ class ExportController extends Controller
         return 'exports/' . $filename;
     }
 
-    private function createSummarySheet($spreadsheet, $groupedResults, $totalAddresses)
+    private function populateSummarySheet($summarySheet, $groupedResults, $totalAddresses, $wardId = null)
     {
-        $summarySheet = $spreadsheet->createSheet();
-        $summarySheet->setTitle('Summary');
+        // Export scope information at the top
+        $scopeText = '';
+        if ($wardId) {
+            $ward = \App\Models\Ward::find($wardId);
+            $scopeText .= $ward ? $ward->name . ' Ward' : 'Single Ward';
+        } else {
+            $scopeText .= 'All Wards';
+        }
+        $scopeText .= " Report - " . now()->format('d M Y');
+        
+        $summarySheet->setCellValue('A1', $scopeText);
+        $summarySheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
+        $summarySheet->getStyle('A1')->getFill()
+            ->setFillType(Fill::FILL_SOLID)
+            ->getStartColor()->setRGB('6AB023');
+        $summarySheet->getStyle('A1')->getFont()->getColor()->setRGB('FFFFFF');
+        $summarySheet->mergeCells('A1:S1');
         
         // Calculate statistics - count only addresses with actual knock results
         $knockedAddresses = 0;
@@ -632,35 +672,35 @@ class ExportController extends Controller
         $notKnockedPercentage = $totalAddresses > 0 ? round(($notKnockedAddresses / $totalAddresses) * 100, 1) : 0;
         
         // Section 1: Canvassing Progress
-        $summarySheet->setCellValue('A1', 'Canvassing Progress');
-        $summarySheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
-        $summarySheet->getStyle('A1')->getFill()
+        $summarySheet->setCellValue('A3', 'Canvassing Progress');
+        $summarySheet->getStyle('A3')->getFont()->setBold(true)->setSize(14);
+        $summarySheet->getStyle('A3')->getFill()
             ->setFillType(Fill::FILL_SOLID)
             ->getStartColor()->setRGB('6AB023');
-        $summarySheet->getStyle('A1')->getFont()->getColor()->setRGB('FFFFFF');
-        $summarySheet->mergeCells('A1:C1');
+        $summarySheet->getStyle('A3')->getFont()->getColor()->setRGB('FFFFFF');
+        $summarySheet->mergeCells('A3:C3');
         
-        $summarySheet->fromArray(['Status', 'Count', 'Percentage'], null, 'A2');
-        $summarySheet->getStyle('A2:C2')->getFont()->setBold(true);
+        $summarySheet->fromArray(['Status', 'Count', 'Percentage'], null, 'A4');
+        $summarySheet->getStyle('A4:C4')->getFont()->setBold(true);
         
-        $summarySheet->fromArray(['Knocked', $knockedAddresses, $knockedPercentage . '%'], null, 'A3');
-        $summarySheet->fromArray(['Not Knocked', $notKnockedAddresses, $notKnockedPercentage . '%'], null, 'A4');
-        $summarySheet->fromArray(['Total Addresses', $totalAddresses, '100%'], null, 'A5');
-        $summarySheet->getStyle('A5:C5')->getFont()->setBold(true);
+        $summarySheet->fromArray(['Knocked', $knockedAddresses, $knockedPercentage . '%'], null, 'A5');
+        $summarySheet->fromArray(['Not Knocked', $notKnockedAddresses, $notKnockedPercentage . '%'], null, 'A6');
+        $summarySheet->fromArray(['Total Addresses', $totalAddresses, '100%'], null, 'A7');
+        $summarySheet->getStyle('A7:C7')->getFont()->setBold(true);
         
         // Section 2: Voting Intentions
-        $summarySheet->setCellValue('A7', 'Voting Intentions');
-        $summarySheet->getStyle('A7')->getFont()->setBold(true)->setSize(14);
-        $summarySheet->getStyle('A7')->getFill()
+        $summarySheet->setCellValue('A9', 'Voting Intentions');
+        $summarySheet->getStyle('A9')->getFont()->setBold(true)->setSize(14);
+        $summarySheet->getStyle('A9')->getFill()
             ->setFillType(Fill::FILL_SOLID)
             ->getStartColor()->setRGB('6AB023');
-        $summarySheet->getStyle('A7')->getFont()->getColor()->setRGB('FFFFFF');
-        $summarySheet->mergeCells('A7:C7');
+        $summarySheet->getStyle('A9')->getFont()->getColor()->setRGB('FFFFFF');
+        $summarySheet->mergeCells('A9:C9');
         
-        $summarySheet->fromArray(['Party/Response', 'Count', 'Percentage'], null, 'A8');
-        $summarySheet->getStyle('A8:C8')->getFont()->setBold(true);
+        $summarySheet->fromArray(['Party/Response', 'Count', 'Percentage'], null, 'A10');
+        $summarySheet->getStyle('A10:C10')->getFont()->setBold(true);
         
-        $intentionRow = 9;
+        $intentionRow = 11;
         foreach ($intentionCounts as $response => $count) {
             $percentage = $knockedAddresses > 0 ? round(($count / $knockedAddresses) * 100, 1) : 0;
             $label = $this->formatResponse($response);
@@ -712,16 +752,16 @@ class ExportController extends Controller
     {
         // Data series for knocked vs not knocked
         $dataSeriesLabels = [
-            new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_STRING, 'Summary!$A$3', null, 1),
-            new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_STRING, 'Summary!$A$4', null, 1),
+            new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_STRING, 'Summary!$A$5', null, 1),
+            new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_STRING, 'Summary!$A$6', null, 1),
         ];
         
         $xAxisTickValues = [
-            new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_STRING, 'Summary!$A$3:$A$4', null, 2),
+            new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_STRING, 'Summary!$A$5:$A$6', null, 2),
         ];
         
         $dataSeriesValues = [
-            new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_NUMBER, 'Summary!$B$3:$B$4', null, 2),
+            new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_NUMBER, 'Summary!$B$5:$B$6', null, 2),
         ];
         
         $series = new DataSeries(
@@ -745,15 +785,15 @@ class ExportController extends Controller
             $plotArea
         );
         
-        $chart->setTopLeftPosition('E2');
-        $chart->setBottomRightPosition('K18');
+        $chart->setTopLeftPosition('E3');
+        $chart->setBottomRightPosition('K20');
         
         $sheet->addChart($chart);
     }
     
     private function addVotingIntentionsChart($sheet, $lastIntentionRow)
     {
-        $firstRow = 9;
+        $firstRow = 11;
         $rowCount = $lastIntentionRow - $firstRow + 1;
         
         if ($rowCount < 1) {
@@ -761,7 +801,7 @@ class ExportController extends Controller
         }
         
         $dataSeriesLabels = [
-            new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_STRING, 'Summary!$B$8', null, 1),
+            new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_STRING, 'Summary!$B$10', null, 1),
         ];
         
         $xAxisTickValues = [
@@ -795,8 +835,8 @@ class ExportController extends Controller
             $plotArea
         );
         
-        $chart->setTopLeftPosition('E20');
-        $chart->setBottomRightPosition('K35');
+        $chart->setTopLeftPosition('E21');
+        $chart->setBottomRightPosition('K37');
         
         $sheet->addChart($chart);
     }
@@ -844,8 +884,8 @@ class ExportController extends Controller
             $plotArea
         );
         
-        $chart->setTopLeftPosition('L20');
-        $chart->setBottomRightPosition('S35');
+        $chart->setTopLeftPosition('L21');
+        $chart->setBottomRightPosition('S37');
         
         $sheet->addChart($chart);
     }
