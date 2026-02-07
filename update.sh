@@ -25,6 +25,14 @@ fi
 echo "📋 Enabling maintenance mode..."
 php artisan down
 
+# Fix permissions for git operations
+echo "🔐 Setting temporary permissions for git..."
+sudo chown -R ec2-user:apache .
+
+# Reset any local changes to ensure clean state
+echo "🧹 Resetting local changes..."
+git checkout -- .
+
 # Fetch latest changes
 echo "📥 Fetching latest code..."
 git fetch origin
