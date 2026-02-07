@@ -44,18 +44,31 @@
                     Format <span class="text-red-600">*</span>
                 </label>
                 <div class="flex gap-4">
-                    <label class="flex items-center space-x-2 cursor-pointer">
-                        <input type="radio" name="format" value="csv" checked required class="text-[#6AB023]">
-                        <span class="text-sm">CSV (Comma-Separated Values)</span>
-                    </label>
-                    <label class="flex items-center space-x-2 cursor-pointer">
-                        <input type="radio" name="format" value="xlsx" required class="text-[#6AB023]">
-                        <span class="text-sm">XLSX (Excel Spreadsheet)</span>
-                    </label>
+                    @if(auth()->user()->isAdmin())
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="radio" name="format" value="csv" checked required class="text-[#6AB023]">
+                            <span class="text-sm">CSV (Comma-Separated Values)</span>
+                        </label>
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="radio" name="format" value="xlsx" required class="text-[#6AB023]">
+                            <span class="text-sm">XLSX (Excel Spreadsheet)</span>
+                        </label>
+                    @else
+                        <input type="hidden" name="format" value="xlsx">
+                        <div class="text-sm text-gray-700 bg-gray-50 px-4 py-2 rounded border border-gray-200">
+                            <span class="font-medium">XLSX (Excel Spreadsheet)</span>
+                        </div>
+                    @endif
                 </div>
-                <p class="text-xs text-gray-500 mt-1">
-                    CSV is compatible with most applications. XLSX provides better formatting in Excel.
-                </p>
+                @if(auth()->user()->isAdmin())
+                    <p class="text-xs text-gray-500 mt-1">
+                        CSV is provided only for admin users. CSVs are not password protected. XLSX provides better formatting in Excel.
+                    </p>
+                @else
+                    <p class="text-xs text-gray-500 mt-1">
+                        Exports are provided in XLSX format for better formatting and compatibility.
+                    </p>
+                @endif
             </div>
 
             <div class="border-t pt-6">
