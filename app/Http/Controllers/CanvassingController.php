@@ -90,7 +90,15 @@ class CanvassingController extends Controller
         }
 
         $responseOptions = KnockResult::responseOptions();
-        $elections = \App\Models\Election::where('active', true)->orderBy('election_date', 'desc')->get();
+        $elections = \App\Models\Election::where('active', true)
+            ->where(function($query) use ($wardId) {
+                $query->whereDoesntHave('wards')
+                    ->orWhereHas('wards', function($q) use ($wardId) {
+                        $q->where('wards.id', $wardId);
+                    });
+            })
+            ->orderBy('election_date', 'desc')
+            ->get();
 
         // Return JSON for AJAX requests
         if (request()->wantsJson() || request()->ajax()) {
@@ -136,7 +144,15 @@ class CanvassingController extends Controller
 
         $town = $addresses->first()->town;
         $responseOptions = KnockResult::responseOptions();
-        $elections = \App\Models\Election::where('active', true)->orderBy('election_date', 'desc')->get();
+        $elections = \App\Models\Election::where('active', true)
+            ->where(function($query) use ($wardId) {
+                $query->whereDoesntHave('wards')
+                    ->orWhereHas('wards', function($q) use ($wardId) {
+                        $q->where('wards.id', $wardId);
+                    });
+            })
+            ->orderBy('election_date', 'desc')
+            ->get();
 
         return view('canvassing.street', compact('ward', 'addresses', 'streetName', 'town', 'responseOptions', 'elections'));
     }
