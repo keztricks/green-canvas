@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Style\Font;
 
 class ExportController extends Controller
 {
@@ -240,12 +239,13 @@ class ExportController extends Controller
         
         // Header row
         $csv[] = [
-            'Export Date',
             'House Number',
             'Street Name',
             'Town',
             'Postcode',
-            'Latest Intention',
+            'Voting Intention',
+            'Likelihood',
+            'Intention Code',
             'Notes',
             'User',
             'Knocked At',
@@ -258,8 +258,10 @@ class ExportController extends Controller
             $latestResult = $results->first(); // Most recent
             $address = $latestResult->address;
             
-            // Format latest intention
-            $latestIntention = $this->formatIntention($latestResult->response, $latestResult->vote_likelihood);
+            // Format response and likelihood separately
+            $votingIntention = $this->formatResponse($latestResult->response);
+            $likelihood = $latestResult->vote_likelihood ?? '';
+            $intentionCode = $this->formatIntention($latestResult->response, $latestResult->vote_likelihood);
             
             // Build history string for previous results
             $historyCount = $results->count() - 1;
@@ -276,12 +278,13 @@ class ExportController extends Controller
             }
             
             $csv[] = [
-                now()->format('Y-m-d H:i:s'),
                 $address->house_number,
                 $address->street_name,
                 $address->town,
                 $address->postcode,
-                $latestIntention,
+                $votingIntention,
+                $likelihood,
+                $intentionCode,
                 $latestResult->notes ?? '',
                 $latestResult->user?->name ?? '',
                 $latestResult->knocked_at->format('Y-m-d H:i:s'),
@@ -327,6 +330,24 @@ class ExportController extends Controller
         return $code;
     }
 
+    private function formatResponse($response)
+    {
+        $labels = [
+            'conservative' => 'Conservative',
+            'labour' => 'Labour',
+            'lib_dem' => 'Liberal Democrat',
+            'green' => 'Green Party',
+            'reform' => 'Reform UK',
+            'your_party' => 'Your Party',
+            'undecided' => 'Undecided',
+            'not_home' => 'Not Home',
+            'refused' => 'Refused to Say',
+            'other' => 'Other',
+        ];
+
+        return $labels[$response] ?? ucfirst($response);
+    }
+
     private function generateXLSX($groupedResults, $filename)
     {
         $spreadsheet = new Spreadsheet();
@@ -335,12 +356,13 @@ class ExportController extends Controller
         
         // Header row
         $headers = [
-            'Export Date',
             'House Number',
             'Street Name',
             'Town',
             'Postcode',
-            'Latest Intention',
+            'Voting Intention',
+            'Likelihood',
+            'Intention Code',
             'Notes',
             'User',
             'Knocked At',
@@ -351,7 +373,7 @@ class ExportController extends Controller
         $sheet->fromArray($headers, null, 'A1');
         
         // Style header row
-        $headerStyle = $sheet->getStyle('A1:K1');
+        $headerStyle = $sheet->getStyle('A1:L1');
         $headerStyle->getFont()->setBold(true)->setSize(12);
         $headerStyle->getFill()
             ->setFillType(Fill::FILL_SOLID)
@@ -364,7 +386,9 @@ class ExportController extends Controller
             $latestResult = $results->first();
             $address = $latestResult->address;
             
-            $latestIntention = $this->formatIntention($latestResult->response, $latestResult->vote_likelihood);
+            $votingIntention = $this->formatResponse($latestResult->response);
+            $likelihood = $latestResult->vote_likelihood ?? '';
+            $intentionCode = $this->formatIntention($latestResult->response, $latestResult->vote_likelihood);
             
             // Format previous results
             $previousResults = [];
@@ -376,12 +400,13 @@ class ExportController extends Controller
             }
             
             $rowData = [
-                now()->format('Y-m-d H:i:s'),
                 $address->house_number,
                 $address->street_name,
                 $address->town,
                 $address->postcode,
-                $latestIntention,
+                $votingIntention,
+                $likelihood,
+                $intentionCode,
                 $latestResult->notes ?? '',
                 $latestResult->user ? $latestResult->user->name : 'Unknown',
                 $latestResult->knocked_at->format('Y-m-d H:i:s'),
@@ -394,13 +419,13 @@ class ExportController extends Controller
         }
         
         // Auto-size columns
-        foreach (range('A', 'K') as $col) {
+        foreach (range('A', 'L') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
         
         // Add auto-filter to all columns
         $lastRow = $row - 1;
-        $sheet->setAutoFilter('A1:K' . $lastRow);
+        $sheet->setAutoFilter('A1:L' . $lastRow);
         
         // Save to storage
         $writer = new Xlsx($spreadsheet);
