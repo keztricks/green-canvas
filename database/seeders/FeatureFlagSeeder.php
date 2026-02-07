@@ -22,6 +22,12 @@ class FeatureFlagSeeder extends Seeder
                 'description' => 'Allow users to configure automatic email delivery of exports on a daily or weekly schedule',
                 'is_enabled' => false,
             ],
+            [
+                'key' => 'dark_mode',
+                'name' => 'Dark Mode',
+                'description' => 'Allow users to switch between light, dark, and system theme preferences',
+                'is_enabled' => false,
+            ],
         ];
 
         foreach ($flags as $flag) {

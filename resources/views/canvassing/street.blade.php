@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="py-6">
+    <div class="py-6 flex-grow min-h-full">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="mb-6">
         <a href="{{ route('canvassing.ward', $ward->id) }}" class="text-[#6AB023] hover:text-[#5a9620]">
@@ -7,11 +7,11 @@
         </a>
     </div>
 
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <div class="mb-6">
-            <p class="text-sm text-gray-600">{{ $ward->name }}</p>
-            <h2 class="text-3xl font-bold mb-2 text-gray-800">{{ $streetName }}</h2>
-            <p class="text-gray-600">{{ $town }}</p>
+            <p class="text-sm text-gray-600 dark:text-gray-300">{{ $ward->name }}</p>
+            <h2 class="text-3xl font-bold mb-2 text-gray-800 dark:text-white">{{ $streetName }}</h2>
+            <p class="text-gray-600 dark:text-gray-300">{{ $town }}</p>
         </div>
 
         <!-- Add Address Button -->
@@ -24,12 +24,12 @@
         @if(auth()->user()->isAdmin())
         <!-- Election Toggle -->
         <div class="mb-4">
-            <label class="flex items-center space-x-2 cursor-pointer p-3 bg-gray-50 rounded-lg border border-gray-300 hover:bg-gray-100 transition-colors">
+            <label class="flex items-center space-x-2 cursor-pointer p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
                 <input type="checkbox" id="electionEditToggle" class="w-4 h-4 text-[#6AB023] rounded" onchange="toggleElectionEditing()">
-                <span class="text-sm font-medium text-gray-700">
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-200">
                     <span id="lockIcon">🔒</span> Enable election editing
                 </span>
-                <span class="text-xs text-gray-500 ml-auto">Click to toggle</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400 ml-auto">Click to toggle</span>
             </label>
         </div>
         @endif
@@ -44,13 +44,13 @@
                     $isNeverVoter = $latestResult && $latestResult->vote_likelihood == 5;
                 @endphp
 
-                <div id="address-{{ $address->id }}" class="border rounded-lg p-4 {{ ($address->do_not_knock || $isNeverVoter) ? 'bg-red-50 border-red-500 border-2' : ($hasResult ? 'bg-gray-50 border-gray-300' : 'bg-white border-gray-200') }}">
+                <div id="address-{{ $address->id }}" class="border rounded-lg p-4 {{ ($address->do_not_knock || $isNeverVoter) ? 'bg-red-50 dark:bg-red-900 border-red-500 border-2' : ($hasResult ? 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700') }}">
                     @if($address->do_not_knock)
-                        <div class="mb-3 p-3 bg-red-100 border-l-4 border-red-500 rounded">
+                        <div class="mb-3 p-3 bg-red-100 dark:bg-red-900 border-l-4 border-red-500 dark:border-red-700 rounded">
                             <div class="flex justify-between items-center">
                                 <div>
-                                    <p class="font-bold text-red-800 text-sm">⚠️ DO NOT KNOCK</p>
-                                    <p class="text-xs text-red-700 mt-1">Marked on {{ $address->do_not_knock_at->format('d/m/Y') }}</p>
+                                    <p class="font-bold text-red-800 dark:text-red-300 text-sm">⚠️ DO NOT KNOCK</p>
+                                    <p class="text-xs text-red-700 dark:text-red-400 mt-1">Marked on {{ $address->do_not_knock_at->format('d/m/Y') }}</p>
                                 </div>
                                 <form action="{{ route('address.clear-do-not-knock', $address) }}" method="POST" onsubmit="return confirm('Are you sure you want to clear the Do Not Knock status?')">
                                     @csrf
@@ -62,18 +62,18 @@
                             </div>
                         </div>
                     @elseif($isNeverVoter)
-                        <div class="mb-3 p-3 bg-red-100 border-l-4 border-red-500 rounded">
-                            <p class="font-bold text-red-800 text-sm">💔 NEVER VOTING GREEN</p>
-                            <p class="text-xs text-red-700 mt-1">Vote likelihood: 5 (Never) - Recorded {{ $latestResult->knocked_at->diffForHumans() }}</p>
+                        <div class="mb-3 p-3 bg-red-100 dark:bg-red-900 border-l-4 border-red-500 dark:border-red-700 rounded">
+                            <p class="font-bold text-red-800 dark:text-red-300 text-sm">💔 NEVER VOTING GREEN</p>
+                            <p class="text-xs text-red-700 dark:text-red-400 mt-1">Vote likelihood: 5 (Never) - Recorded {{ $latestResult->knocked_at->diffForHumans() }}</p>
                         </div>
                     @endif
 
                     <div class="flex justify-between items-start">
                         <div class="flex-1">
-                            <h3 class="text-lg font-semibold {{ ($address->do_not_knock || $isNeverVoter) ? 'text-red-800' : 'text-gray-800' }}">
+                            <h3 class="text-lg font-semibold {{ ($address->do_not_knock || $isNeverVoter) ? 'text-red-800 dark:text-red-300' : 'text-gray-800 dark:text-white' }}">
                                 {{ $address->house_number }} {{ $address->street_name }}
                             </h3>
-                            <p class="text-sm text-gray-600">{{ $address->postcode }}</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-300">{{ $address->postcode }}</p>
 
                             @if($elections->isNotEmpty())
                                 <div class="mt-2 flex flex-wrap gap-1">
@@ -107,7 +107,7 @@
                             @endif
 
                             @if($hasResult)
-                                <div class="mt-2 p-3 bg-white rounded border-l-4 {{ ($address->do_not_knock || $isNeverVoter) ? 'hidden' : '' }} latest-result-{{ $address->id }}
+                                <div class="mt-2 p-3 bg-white dark:bg-gray-800 rounded border-l-4 {{ ($address->do_not_knock || $isNeverVoter) ? 'hidden' : '' }} latest-result-{{ $address->id }}
                                     @if($latestResult->response === 'green') border-green-500
                                     @elseif($latestResult->response === 'labour') border-red-500
                                     @elseif($latestResult->response === 'conservative') border-blue-500
@@ -118,23 +118,23 @@
                                     @if($latestResult->response === 'reform') style="border-left-color: #17B9D1;" @endif>
                                     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
                                         <div class="flex-1">
-                                            <p class="font-medium text-sm">
+                                            <p class="font-medium text-sm dark:text-gray-200">
                                                 Latest: <span class="font-bold">{{ $responseOptions[$latestResult->response] }}</span>
                                             </p>
                                             @if($latestResult->vote_likelihood)
-                                                <p class="text-sm text-gray-700 mt-1">
+                                                <p class="text-sm text-gray-700 dark:text-gray-300 mt-1">
                                                     Green support: <span class="font-semibold">{{ $latestResult->vote_likelihood }}/5</span>
                                                     @if($latestResult->vote_likelihood == 1)
-                                                        <span class="text-xs text-green-600">(Definitely)</span>
+                                                        <span class="text-xs text-green-600 dark:text-green-400">(Definitely)</span>
                                                     @elseif($latestResult->vote_likelihood == 5)
-                                                        <span class="text-xs text-red-600">(Never)</span>
+                                                        <span class="text-xs text-red-600 dark:text-red-400">(Never)</span>
                                                     @endif
                                                 </p>
                                             @endif
                                             @if($latestResult->notes)
-                                                <p class="text-sm text-gray-600 mt-1">{{ $latestResult->notes }}</p>
+                                                <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">{{ $latestResult->notes }}</p>
                                             @endif
-                                            <p class="text-xs text-gray-500 mt-1">
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                                 {{ $latestResult->knocked_at->diffForHumans() }}
                                                 @if($latestResult->user)
                                                     by {{ $latestResult->user->name }}
@@ -163,12 +163,12 @@
                                 @if($hasHistory)
                                     <div class="mt-2">
                                         <button onclick="toggleHistory({{ $address->id }}, {{ ($address->do_not_knock || $isNeverVoter) ? 'true' : 'false' }})" 
-                                                class="text-sm text-gray-600 hover:text-gray-800 underline">
+                                                class="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white underline">
                                             Show history ({{ ($address->do_not_knock || $isNeverVoter) ? $allResults->count() : $allResults->count() - 1 }} {{ ($address->do_not_knock || $isNeverVoter) ? 'results' : 'previous' }})
                                         </button>
                                         <div id="history-{{ $address->id }}" class="hidden mt-2 space-y-2">
                                             @foreach($allResults->skip(1) as $result)
-                                                <div class="p-2 bg-gray-100 rounded border-l-4 
+                                                <div class="p-2 bg-gray-100 dark:bg-gray-700 rounded border-l-4 
                                                     @if($result->response === 'green') border-green-500
                                                     @elseif($result->response === 'labour') border-red-500
                                                     @elseif($result->response === 'conservative') border-blue-500
@@ -179,15 +179,15 @@
                                                     @if($result->response === 'reform') style="border-left-color: #17B9D1;" @endif>
                                                     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
                                                         <div class="flex-1">
-                                                            <p class="font-medium">{{ $responseOptions[$result->response] }}
+                                                            <p class="font-medium dark:text-gray-200">{{ $responseOptions[$result->response] }}
                                                                 @if($result->vote_likelihood)
-                                                                    <span class="text-gray-600">({{ $result->vote_likelihood }}/5)</span>
+                                                                    <span class="text-gray-600 dark:text-gray-300">({{ $result->vote_likelihood }}/5)</span>
                                                                 @endif
                                                             </p>
                                                             @if($result->notes)
-                                                                <p class="text-gray-600 mt-1">{{ $result->notes }}</p>
+                                                                <p class="text-gray-600 dark:text-gray-300 mt-1">{{ $result->notes }}</p>
                                                             @endif
-                                                            <p class="text-xs text-gray-500 mt-1">
+                                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                                                 {{ $result->knocked_at->format('d/m/Y H:i') }}
                                                                 @if($result->user)
                                                                     by {{ $result->user->name }}
@@ -216,13 +216,13 @@
                                                     <form id="edit-form-{{ $result->id }}" 
                                                           action="{{ route('knock-result.update', $result) }}" 
                                                           method="POST" 
-                                                          class="hidden mt-3 space-y-2 border-t pt-2">
+                                                          class="hidden mt-3 space-y-2 border-t dark:border-gray-600 pt-2">
                                                         @csrf
                                                         @method('PUT')
                                                         
                                                         <div>
-                                                            <label class="block text-xs font-medium text-gray-700 mb-1">Voting Intention</label>
-                                                            <select name="response" required class="w-full border border-gray-300 rounded px-2 py-1 text-xs">
+                                                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Voting Intention</label>
+                                                            <select name="response" required class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1 text-xs">
                                                                 @foreach($responseOptions as $value => $label)
                                                                     <option value="{{ $value }}" {{ $result->response === $value ? 'selected' : '' }}>
                                                                         {{ $label }}
@@ -232,8 +232,8 @@
                                                         </div>
 
                                                         <div>
-                                                            <label class="block text-xs font-medium text-gray-700 mb-1">Green Support (1=Def, 5=Never)</label>
-                                                            <select name="vote_likelihood" class="w-full border border-gray-300 rounded px-2 py-1 text-xs">
+                                                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Green Support (1=Def, 5=Never)</label>
+                                                            <select name="vote_likelihood" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1 text-xs">
                                                                 <option value="">Not specified</option>
                                                                 @for($i = 1; $i <= 5; $i++)
                                                                     <option value="{{ $i }}" {{ $result->vote_likelihood == $i ? 'selected' : '' }}>
@@ -244,8 +244,8 @@
                                                         </div>
 
                                                         <div>
-                                                            <label class="block text-xs font-medium text-gray-700 mb-1">Notes</label>
-                                                            <textarea name="notes" rows="2" class="w-full border border-gray-300 rounded px-2 py-1 text-xs">{{ $result->notes }}</textarea>
+                                                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Notes</label>
+                                                            <textarea name="notes" rows="2" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1 text-xs">{{ $result->notes }}</textarea>
                                                         </div>
 
                                                         <div class="flex space-x-2">
@@ -253,7 +253,7 @@
                                                                 Save
                                                             </button>
                                                             <button type="button" onclick="toggleEditForm({{ $result->id }})" 
-                                                                    class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-3 py-1 rounded text-xs">
+                                                                    class="bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-800 dark:text-white px-3 py-1 rounded text-xs">
                                                                 Cancel
                                                             </button>
                                                         </div>
@@ -268,13 +268,13 @@
                                 <form id="edit-form-{{ $latestResult->id }}" 
                                       action="{{ route('knock-result.update', $latestResult) }}" 
                                       method="POST" 
-                                      class="hidden mt-3 space-y-2 border-t pt-3">
+                                      class="hidden mt-3 space-y-2 border-t dark:border-gray-600 pt-3">
                                     @csrf
                                     @method('PUT')
                                     
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Voting Intention</label>
-                                        <select name="response" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Voting Intention</label>
+                                        <select name="response" required class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-3 py-2 text-sm">
                                             @foreach($responseOptions as $value => $label)
                                                 <option value="{{ $value }}" {{ $latestResult->response === $value ? 'selected' : '' }}>
                                                     {{ $label }}
@@ -284,8 +284,8 @@
                                     </div>
 
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Green Party Support (1=Definitely, 5=Never)</label>
-                                        <select name="vote_likelihood" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Green Party Support (1=Definitely, 5=Never)</label>
+                                        <select name="vote_likelihood" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-3 py-2 text-sm">
                                             <option value="">Not specified</option>
                                             @for($i = 1; $i <= 5; $i++)
                                                 <option value="{{ $i }}" {{ $latestResult->vote_likelihood == $i ? 'selected' : '' }}>
@@ -296,8 +296,8 @@
                                     </div>
 
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                                        <textarea name="notes" rows="2" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">{{ $latestResult->notes }}</textarea>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Notes</label>
+                                        <textarea name="notes" rows="2" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-3 py-2 text-sm">{{ $latestResult->notes }}</textarea>
                                     </div>
 
                                     <div class="flex space-x-2">
@@ -305,7 +305,7 @@
                                             Update Result
                                         </button>
                                         <button type="button" onclick="toggleEditForm({{ $latestResult->id }})" 
-                                                class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">
+                                                class="bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-800 dark:text-white px-4 py-2 rounded">
                                             Cancel
                                         </button>
                                     </div>
@@ -326,15 +326,15 @@
                     <form id="form-{{ $address->id }}" 
                           action="{{ route('knock-result.store') }}" 
                           method="POST" 
-                          class="mt-4 hidden space-y-3 border-t pt-4">
+                          class="mt-4 hidden space-y-3 border-t dark:border-gray-600 pt-4">
                         @csrf
                         <input type="hidden" name="address_id" value="{{ $address->id }}">
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Voting Intention</label>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Voting Intention</label>
                             <div class="grid grid-cols-2 gap-2">
                                 @foreach($responseOptions as $value => $label)
-                                    <label class="flex items-center space-x-2 p-2 border rounded hover:bg-gray-50 cursor-pointer">
+                                    <label class="flex items-center space-x-2 p-2 border dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer dark:text-gray-200">
                                         <input type="radio" name="response" value="{{ $value }}" required class="text-green-600">
                                         <span class="text-sm">{{ $label }}</span>
                                     </label>
@@ -343,7 +343,7 @@
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Green Party Support (optional)</label>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Green Party Support (optional)</label>
                             <div class="flex gap-2 sm:gap-3">
                                 @for($i = 5; $i >= 1; $i--)
                                     @php
@@ -361,16 +361,16 @@
                                     </label>
                                 @endfor
                             </div>
-                            <p class="text-xs text-gray-500 mt-1">5 = Never voting Green, 1 = Definitely voting Green</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">5 = Never voting Green, 1 = Definitely voting Green</p>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
-                            <textarea name="notes" rows="2" class="w-full border border-gray-300 rounded px-3 py-2 text-sm"></textarea>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Notes (optional)</label>
+                            <textarea name="notes" rows="2" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-3 py-2 text-sm"></textarea>
                         </div>
 
-                        <div class="bg-gray-50 border border-gray-200 rounded p-3">
-                            <p class="text-sm text-gray-700">
+                        <div class="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-3">
+                            <p class="text-sm text-gray-700 dark:text-gray-300">
                                 <span class="font-medium">Logged by:</span> {{ auth()->user()->name }}
                             </p>
                         </div>
@@ -380,7 +380,7 @@
                                 Save Result
                             </button>
                             <button type="button" onclick="toggleForm({{ $address->id }})" 
-                                    class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">
+                                    class="bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-800 dark:text-white px-4 py-2 rounded">
                                 Cancel
                             </button>
                             @if(!$address->do_not_knock)
@@ -559,11 +559,11 @@ function toggleAddressModal() {
 </script>
 
 <!-- Add Address Modal -->
-<div id="addAddressModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+<div id="addAddressModal" class="hidden fixed inset-0 bg-gray-600 dark:bg-gray-900 bg-opacity-50 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border border-gray-200 dark:border-gray-700 w-full max-w-2xl shadow-lg rounded-md bg-white dark:bg-gray-800">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold text-gray-900">Add Missing Address</h3>
-            <button onclick="toggleAddressModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white">Add Missing Address</h3>
+            <button onclick="toggleAddressModal()" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-2xl">&times;</button>
         </div>
 
         <form action="{{ route('address.store') }}" method="POST" class="space-y-4">
@@ -572,47 +572,47 @@ function toggleAddressModal() {
 
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">House Number *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">House Number *</label>
                     <input type="text" 
                            name="house_number" 
                            required
                            placeholder="e.g. 12 or 12a"
-                           class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+                           class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-3 py-2 text-sm">
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Postcode *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Postcode *</label>
                     <input type="text" 
                            name="postcode" 
                            required
                            placeholder="e.g. HX1 3AB"
                            value="{{ $addresses->first()->postcode ?? '' }}"
-                           class="w-full border border-gray-300 rounded px-3 py-2 text-sm uppercase">
+                           class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-3 py-2 text-sm uppercase">
                 </div>
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Street Name *</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Street Name *</label>
                 <input type="text" 
                        name="street_name" 
                        required
                        value="{{ $streetName }}"
-                       class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-3 py-2 text-sm">
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Town *</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Town *</label>
                 <input type="text" 
                        name="town" 
                        required
                        value="{{ $town }}"
-                       class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-3 py-2 text-sm">
             </div>
 
             <div class="flex justify-end gap-3 pt-4">
                 <button type="button" 
                         onclick="toggleAddressModal()" 
-                        class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">
+                        class="bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-800 dark:text-white px-4 py-2 rounded">
                     Cancel
                 </button>
                 <button type="submit" 

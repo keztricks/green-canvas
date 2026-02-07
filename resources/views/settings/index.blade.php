@@ -3,15 +3,15 @@
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
             
             @if(session('success'))
-                <div class="p-4 bg-green-100 border border-green-400 text-green-700 rounded">
+                <div class="p-4 bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-300 rounded">
                     {{ session('success') }}
                 </div>
             @endif
 
             <!-- Profile Information -->
-            <div class="bg-white rounded-lg shadow p-6">
-                <h2 class="text-2xl font-bold mb-4 text-gray-800">Profile Information</h2>
-                <p class="text-sm text-gray-600 mb-4">Update your account's profile information and email address.</p>
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h2 class="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Profile Information</h2>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">Update your account's profile information and email address.</p>
                 
                 <form action="{{ route('settings.profile.update') }}" method="POST">
                     @csrf
@@ -19,28 +19,28 @@
 
                     <div class="space-y-4">
                         <div>
-                            <label for="name" class="block text-sm font-semibold text-gray-700 mb-2">Name</label>
+                            <label for="name" class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Name</label>
                             <input type="text" 
                                    name="name" 
                                    id="name" 
                                    value="{{ old('name', $user->name) }}"
                                    required
-                                   class="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#6AB023] @error('name') border-red-500 @enderror">
+                                   class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#6AB023] @error('name') border-red-500 @enderror">
                             @error('name')
-                                <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                                <p class="text-red-600 dark:text-red-400 text-sm mt-1">{{ $message }}</p>
                             @enderror
                         </div>
 
                         <div>
-                            <label for="email" class="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                            <label for="email" class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Email</label>
                             <input type="email" 
                                    name="email" 
                                    id="email" 
                                    value="{{ old('email', $user->email) }}"
                                    required
-                                   class="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#6AB023] @error('email') border-red-500 @enderror">
+                                   class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#6AB023] @error('email') border-red-500 @enderror">
                             @error('email')
-                                <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                                <p class="text-red-600 dark:text-red-400 text-sm mt-1">{{ $message }}</p>
                             @enderror
                         </div>
 
@@ -54,9 +54,9 @@
             </div>
 
             <!-- Update Password -->
-            <div class="bg-white rounded-lg shadow p-6">
-                <h2 class="text-2xl font-bold mb-4 text-gray-800">Update Password</h2>
-                <p class="text-sm text-gray-600 mb-4">Ensure your account is using a long, random password to stay secure.</p>
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h2 class="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Update Password</h2>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">Ensure your account is using a long, random password to stay secure.</p>
                 
                 <form action="{{ route('settings.password.update') }}" method="POST">
                     @csrf
@@ -64,36 +64,36 @@
 
                     <div class="space-y-4">
                         <div>
-                            <label for="current_password" class="block text-sm font-semibold text-gray-700 mb-2">Current Password</label>
+                            <label for="current_password" class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Current Password</label>
                             <input type="password" 
                                    name="current_password" 
                                    id="current_password"
                                    required
-                                   class="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#6AB023] @error('current_password') border-red-500 @enderror">
+                                   class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#6AB023] @error('current_password') border-red-500 @enderror">
                             @error('current_password')
-                                <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                                <p class="text-red-600 dark:text-red-400 text-sm mt-1">{{ $message }}</p>
                             @enderror
                         </div>
 
                         <div>
-                            <label for="password" class="block text-sm font-semibold text-gray-700 mb-2">New Password</label>
+                            <label for="password" class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">New Password</label>
                             <input type="password" 
                                    name="password" 
                                    id="password"
                                    required
-                                   class="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#6AB023] @error('password') border-red-500 @enderror">
+                                   class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#6AB023] @error('password') border-red-500 @enderror">
                             @error('password')
-                                <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                                <p class="text-red-600 dark:text-red-400 text-sm mt-1">{{ $message }}</p>
                             @enderror
                         </div>
 
                         <div>
-                            <label for="password_confirmation" class="block text-sm font-semibold text-gray-700 mb-2">Confirm Password</label>
+                            <label for="password_confirmation" class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Confirm Password</label>
                             <input type="password" 
                                    name="password_confirmation" 
                                    id="password_confirmation"
                                    required
-                                   class="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#6AB023]">
+                                   class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#6AB023]">
                         </div>
 
                         <div class="flex gap-3 pt-2">
@@ -107,15 +107,15 @@
 
             <!-- Export Schedule Settings -->
             @if(\App\Models\FeatureFlag::isEnabled('export_email_schedules'))
-            <div class="bg-white rounded-lg shadow p-6">
-                <h2 class="text-2xl font-bold mb-4 text-gray-800">Export Email Schedule</h2>
-                <p class="text-sm text-gray-600 mb-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h2 class="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Export Email Schedule</h2>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
                     Configure automatic export emails for your assigned wards. You will receive a CSV export at the selected frequency.
                 </p>
 
                 @if($wards->isEmpty())
-                    <div class="text-center py-8 bg-gray-50 rounded">
-                        <p class="text-gray-600">
+                    <div class="text-center py-8 bg-gray-50 dark:bg-gray-700 rounded">
+                        <p class="text-gray-600 dark:text-gray-300">
                             @if(auth()->user()->isAdmin())
                                 No wards available yet.
                             @else
@@ -134,13 +134,13 @@
                                     $currentFrequency = $currentSchedule ? $currentSchedule->frequency : 'none';
                                 @endphp
                                 
-                                <div class="flex items-center justify-between p-4 border border-gray-200 rounded hover:bg-gray-50">
+                                <div class="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
                                     <div class="flex-1">
-                                        <h4 class="font-medium text-gray-800">{{ $ward->name }}</h4>
+                                        <h4 class="font-medium text-gray-800 dark:text-white">{{ $ward->name }}</h4>
                                     </div>
                                     <div class="flex gap-2">
                                         <label class="inline-flex items-center px-4 py-2 border rounded cursor-pointer transition-colors
-                                                {{ $currentFrequency === 'none' ? 'bg-[#6AB023] text-white border-[#6AB023]' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
+                                                {{ $currentFrequency === 'none' ? 'bg-[#6AB023] text-white border-[#6AB023]' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600' }}">
                                             <input type="radio" 
                                                    name="schedules[{{ $ward->id }}]" 
                                                    value="none" 
@@ -149,7 +149,7 @@
                                             <span class="text-sm font-medium">None</span>
                                         </label>
                                         <label class="inline-flex items-center px-4 py-2 border rounded cursor-pointer transition-colors
-                                                {{ $currentFrequency === 'daily' ? 'bg-[#6AB023] text-white border-[#6AB023]' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
+                                                {{ $currentFrequency === 'daily' ? 'bg-[#6AB023] text-white border-[#6AB023]' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600' }}">
                                             <input type="radio" 
                                                    name="schedules[{{ $ward->id }}]" 
                                                    value="daily" 
@@ -158,7 +158,7 @@
                                             <span class="text-sm font-medium">Daily</span>
                                         </label>
                                         <label class="inline-flex items-center px-4 py-2 border rounded cursor-pointer transition-colors
-                                                {{ $currentFrequency === 'weekly' ? 'bg-[#6AB023] text-white border-[#6AB023]' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
+                                                {{ $currentFrequency === 'weekly' ? 'bg-[#6AB023] text-white border-[#6AB023]' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600' }}">
                                             <input type="radio" 
                                                    name="schedules[{{ $ward->id }}]" 
                                                    value="weekly" 
@@ -182,9 +182,9 @@
             @endif
 
             <!-- Delete Account -->
-            <div class="bg-white rounded-lg shadow p-6">
-                <h2 class="text-2xl font-bold mb-4 text-gray-800">Delete Account</h2>
-                <p class="text-sm text-gray-600 mb-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h2 class="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Delete Account</h2>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
                     Once your account is deleted, all of its resources and data will be permanently deleted. Before deleting your account, please download any data or information that you wish to retain.
                 </p>
 
@@ -198,11 +198,11 @@
     </div>
 
     <!-- Delete Account Confirmation Modal -->
-    <div id="deleteAccountModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+    <div id="deleteAccountModal" class="hidden fixed inset-0 bg-gray-600 dark:bg-gray-900 bg-opacity-50 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border border-gray-300 dark:border-gray-700 w-full max-w-md shadow-lg rounded-md bg-white dark:bg-gray-800">
             <div class="mt-3">
-                <h3 class="text-lg font-bold text-gray-900 mb-4">Are you sure you want to delete your account?</h3>
-                <p class="text-sm text-gray-600 mb-4">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Are you sure you want to delete your account?</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
                     Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.
                 </p>
 
@@ -211,21 +211,21 @@
                     @method('DELETE')
 
                     <div class="mb-4">
-                        <label for="password" class="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+                        <label for="password" class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Password</label>
                         <input type="password" 
                                name="password" 
                                id="delete_password"
                                required
-                               class="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-red-500 @error('password', 'userDeletion') border-red-500 @enderror">
+                               class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-red-500 @error('password', 'userDeletion') border-red-500 @enderror">
                         @error('password', 'userDeletion')
-                            <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                            <p class="text-red-600 dark:text-red-400 text-sm mt-1">{{ $message }}</p>
                         @enderror
                     </div>
 
                     <div class="flex gap-3 justify-end">
                         <button type="button" 
                                 onclick="document.getElementById('deleteAccountModal').classList.add('hidden')"
-                                class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-2 rounded font-medium">
+                                class="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-white px-6 py-2 rounded font-medium">
                             Cancel
                         </button>
                         <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded font-medium">
