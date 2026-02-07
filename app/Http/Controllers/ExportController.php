@@ -619,7 +619,7 @@ class ExportController extends Controller
             $intentionCounts[$response] = ($intentionCounts[$response] ?? 0) + 1;
             
             // Track Green Party likelihood distribution
-            if ($response === 'green' && $latestResult->vote_likelihood) {
+            if ($latestResult->vote_likelihood) {
                 $likelihood = (int)$latestResult->vote_likelihood;
                 if (isset($greenLikelihoodCounts[$likelihood])) {
                     $greenLikelihoodCounts[$likelihood]++;
