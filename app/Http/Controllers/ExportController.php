@@ -31,6 +31,14 @@ class ExportController extends Controller
         }
         
         $exports = $query->get();
+        
+        // Filter out CSV exports for non-admin users
+        if (!$user->isAdmin()) {
+            $exports = $exports->filter(function($export) {
+                return !str_ends_with($export->filename, '.csv');
+            });
+        }
+        
         return view('exports.index', compact('exports'));
     }
 
@@ -94,6 +102,11 @@ class ExportController extends Controller
             'date_to' => 'nullable|date|after_or_equal:date_from',
             'ward_id' => 'nullable|exists:wards,id',
         ]);
+        
+        // Restrict CSV exports to admins only
+        if ($validated['format'] === 'csv' && !$user->isAdmin()) {
+            return redirect()->back()->withErrors(['format' => 'Only administrators can export in CSV format.']);
+        }
         
         // Verify user has access to the selected ward
         if (!empty($validated['ward_id']) && !$user->hasAccessToWard($validated['ward_id'])) {
