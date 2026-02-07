@@ -656,7 +656,11 @@ class ExportController extends Controller
             
             $knockedAddresses++;
             $response = $latestResult->response;
-            $intentionCounts[$response] = ($intentionCounts[$response] ?? 0) + 1;
+            
+            // Count all responses for knocked addresses, but exclude 'not_home' from voting intentions
+            if ($response !== 'not_home') {
+                $intentionCounts[$response] = ($intentionCounts[$response] ?? 0) + 1;
+            }
             
             // Track Green Party likelihood distribution
             if ($latestResult->vote_likelihood) {
@@ -670,6 +674,9 @@ class ExportController extends Controller
         $notKnockedAddresses = $totalAddresses - $knockedAddresses;
         $knockedPercentage = $totalAddresses > 0 ? round(($knockedAddresses / $totalAddresses) * 100, 1) : 0;
         $notKnockedPercentage = $totalAddresses > 0 ? round(($notKnockedAddresses / $totalAddresses) * 100, 1) : 0;
+        
+        // Calculate total for voting intentions (excluding not_home)
+        $totalVotingIntentions = array_sum($intentionCounts);
         
         // Section 1: Canvassing Progress
         $summarySheet->setCellValue('A3', 'Canvassing Progress');
@@ -689,7 +696,7 @@ class ExportController extends Controller
         $summarySheet->getStyle('A7:C7')->getFont()->setBold(true);
         
         // Section 2: Voting Intentions
-        $summarySheet->setCellValue('A9', 'Voting Intentions');
+        $summarySheet->setCellValue('A9', 'Voting Intentions - Exlcudes Not Home');
         $summarySheet->getStyle('A9')->getFont()->setBold(true)->setSize(14);
         $summarySheet->getStyle('A9')->getFill()
             ->setFillType(Fill::FILL_SOLID)
@@ -702,7 +709,7 @@ class ExportController extends Controller
         
         $intentionRow = 11;
         foreach ($intentionCounts as $response => $count) {
-            $percentage = $knockedAddresses > 0 ? round(($count / $knockedAddresses) * 100, 1) : 0;
+            $percentage = $totalVotingIntentions > 0 ? round(($count / $totalVotingIntentions) * 100, 1) : 0;
             $label = $this->formatResponse($response);
             $summarySheet->fromArray([$label, $count, $percentage . '%'], null, 'A' . $intentionRow);
             $intentionRow++;
