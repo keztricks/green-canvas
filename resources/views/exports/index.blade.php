@@ -17,78 +17,60 @@
                 </a>
             </div>
         @else
-            <div class="overflow-x-auto">
+            <!-- Desktop Table View -->
+            <div class="hidden md:block">
                 <table class="w-full">
                     <thead class="bg-gray-50 border-b-2 border-gray-200">
                         <tr>
-                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Version</th>
-                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Created</th>
-                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Records</th>
-                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Filters</th>
-                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Notes</th>
-                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Filename</th>
-                            <th class="px-4 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
+                            <th class="px-3 py-3 text-left text-sm font-semibold text-gray-700">Version</th>
+                            <th class="px-3 py-3 text-left text-sm font-semibold text-gray-700">Created</th>
+                            <th class="px-3 py-3 text-left text-sm font-semibold text-gray-700">Records</th>
+                            <th class="px-3 py-3 text-left text-sm font-semibold text-gray-700">Ward</th>
+                            <th class="px-3 py-3 text-left text-sm font-semibold text-gray-700">Date Range</th>
+                            <th class="px-3 py-3 text-left text-sm font-semibold text-gray-700">Notes</th>
+                            <th class="px-3 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200">
                         @foreach($exports as $export)
                             <tr class="hover:bg-gray-50">
-                                <td class="px-4 py-3">
-                                    <span class="inline-block bg-green-100 text-[#6AB023] px-3 py-1 rounded-full text-sm font-medium">
+                                <td class="px-3 py-3">
+                                    <span class="inline-block bg-green-100 text-[#6AB023] px-2 py-1 rounded-full text-sm font-medium">
                                         {{ $export->version }}
                                     </span>
                                 </td>
-                                <td class="px-4 py-3 text-sm text-gray-600">
+                                <td class="px-3 py-3 text-sm text-gray-600">
                                     {{ $export->created_at->format('d M Y H:i') }}
-                                    <span class="text-xs text-gray-400 block">
-                                        {{ $export->created_at->diffForHumans() }}
-                                    </span>
                                 </td>
-                                <td class="px-4 py-3 text-sm text-gray-700 font-medium">
+                                <td class="px-3 py-3 text-sm text-gray-700 font-medium">
                                     {{ number_format($export->record_count) }}
                                 </td>
-                                <td class="px-4 py-3 text-sm text-gray-600">
-                                    @if($export->ward_id || $export->date_from || $export->date_to)
-                                        <button onclick="toggleFilters({{ $export->id }})" 
-                                                class="text-blue-600 hover:text-blue-800 text-xs underline">
-                                            View filters
-                                        </button>
-                                        <div id="filters-{{ $export->id }}" class="hidden mt-2 space-y-1">
-                                            @if($export->ward)
-                                                <div class="flex items-center gap-1">
-                                                    <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Ward:</span>
-                                                    <span class="text-xs">{{ $export->ward->name }}</span>
-                                                </div>
-                                            @endif
-                                            @if($export->date_from || $export->date_to)
-                                                <div class="flex items-center gap-1">
-                                                    <span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">Dates:</span>
-                                                    <span class="text-xs">
-                                                        @if($export->date_from && $export->date_to)
-                                                            {{ $export->date_from->format('d/m/Y') }} - {{ $export->date_to->format('d/m/Y') }}
-                                                        @elseif($export->date_from)
-                                                            From {{ $export->date_from->format('d/m/Y') }}
-                                                        @else
-                                                            Until {{ $export->date_to->format('d/m/Y') }}
-                                                        @endif
-                                                    </span>
-                                                </div>
-                                            @endif
-                                        </div>
+                                <td class="px-3 py-3 text-sm text-gray-600">
+                                    @if($export->ward)
+                                        {{ $export->ward->name }}
                                     @else
-                                        <span class="text-xs text-gray-400">None</span>
+                                        <span class="text-gray-400">All</span>
                                     @endif
                                 </td>
-                                <td class="px-4 py-3 text-sm text-gray-600">
+                                <td class="px-3 py-3 text-sm text-gray-600">
+                                    @if($export->date_from && $export->date_to)
+                                        {{ $export->date_from->format('d/m/y') }} - {{ $export->date_to->format('d/m/y') }}
+                                    @elseif($export->date_from)
+                                        From {{ $export->date_from->format('d/m/y') }}
+                                    @elseif($export->date_to)
+                                        Until {{ $export->date_to->format('d/m/y') }}
+                                    @else
+                                        <span class="text-gray-400">All dates</span>
+                                    @endif
+                                </td>
+                                <td class="px-3 py-3 text-sm text-gray-600">
                                     {{ $export->notes ?? '-' }}
                                 </td>
-                                <td class="px-4 py-3 text-sm text-gray-500 font-mono">
-                                    {{ $export->filename }}
-                                </td>
-                                <td class="px-4 py-3 text-right">
+                                <td class="px-3 py-3 text-right">
                                     <div class="flex justify-end gap-2">
                                         <a href="{{ route('exports.download', $export) }}" 
-                                           class="bg-[#6AB023] hover:bg-[#5a9620] text-white px-3 py-1 rounded text-sm">
+                                           class="bg-[#6AB023] hover:bg-[#5a9620] text-white px-3 py-1 rounded text-sm"
+                                           title="{{ $export->filename }}">
                                             Download
                                         </a>
                                         <form action="{{ route('exports.destroy', $export) }}" 
@@ -107,6 +89,80 @@
                         @endforeach
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Mobile Card View -->
+            <div class="md:hidden space-y-4">
+                @foreach($exports as $export)
+                    <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                        <div class="flex justify-between items-start mb-3">
+                            <span class="inline-block bg-green-100 text-[#6AB023] px-3 py-1 rounded-full text-sm font-medium">
+                                {{ $export->version }}
+                            </span>
+                            <span class="text-xs text-gray-500">
+                                {{ $export->created_at->format('d M Y H:i') }}
+                            </span>
+                        </div>
+                        
+                        <div class="space-y-2 mb-4">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Records:</span>
+                                <span class="font-medium text-gray-900">{{ number_format($export->record_count) }}</span>
+                            </div>
+                            
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Ward:</span>
+                                <span class="text-gray-900">
+                                    @if($export->ward)
+                                        {{ $export->ward->name }}
+                                    @else
+                                        <span class="text-gray-400">All</span>
+                                    @endif
+                                </span>
+                            </div>
+                            
+                            @if($export->date_from || $export->date_to)
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-600">Date Range:</span>
+                                    <span class="text-gray-900">
+                                        @if($export->date_from && $export->date_to)
+                                            {{ $export->date_from->format('d/m/y') }} - {{ $export->date_to->format('d/m/y') }}
+                                        @elseif($export->date_from)
+                                            From {{ $export->date_from->format('d/m/y') }}
+                                        @else
+                                            Until {{ $export->date_to->format('d/m/y') }}
+                                        @endif
+                                    </span>
+                                </div>
+                            @endif
+                            
+                            @if($export->notes)
+                                <div class="text-sm pt-2 border-t border-gray-100">
+                                    <span class="text-gray-600 block mb-1">Notes:</span>
+                                    <span class="text-gray-900">{{ $export->notes }}</span>
+                                </div>
+                            @endif
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <a href="{{ route('exports.download', $export) }}" 
+                               class="flex-1 bg-[#6AB023] hover:bg-[#5a9620] text-white px-4 py-2 rounded text-sm text-center font-medium">
+                                Download
+                            </a>
+                            <form action="{{ route('exports.destroy', $export) }}" 
+                                  method="POST" 
+                                  class="flex-shrink-0"
+                                  onsubmit="return confirm('Are you sure you want to delete this export?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" 
+                                        class="bg-red-100 hover:bg-red-200 text-red-800 px-4 py-2 rounded text-sm font-medium">
+                                    Delete
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                @endforeach
             </div>
 
             <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded">
