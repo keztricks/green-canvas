@@ -317,6 +317,7 @@ class ExportController extends Controller
             'Street Name',
             'Ward',
             'Postcode',
+            'Electors',
             'Voting Intention',
             'Likelihood',
             'Intention Code',
@@ -341,6 +342,7 @@ class ExportController extends Controller
                     $address->street_name ?? '',
                     $address->town ?? '',
                     $address->postcode ?? '',
+                    $address->elector_count ?? 0,
                     '', // No voting intention
                     '', // No likelihood
                     '', // No intention code
@@ -398,6 +400,7 @@ class ExportController extends Controller
                 $address->street_name,
                 $address->town,
                 $address->postcode,
+                $address->elector_count ?? 0,
                 $votingIntention,
                 $likelihood,
                 $intentionCode,
@@ -492,6 +495,7 @@ class ExportController extends Controller
             'Street Name',
             'Ward',
             'Postcode',
+            'Electors',
             'Voting Intention',
             'Likelihood',
             'Intention Code',
@@ -505,7 +509,7 @@ class ExportController extends Controller
         $sheet->fromArray($headers, null, 'A1');
         
         // Style header row
-        $headerStyle = $sheet->getStyle('A1:L1');
+        $headerStyle = $sheet->getStyle('A1:M1');
         $headerStyle->getFont()->setBold(true)->setSize(12);
         $headerStyle->getFill()
             ->setFillType(Fill::FILL_SOLID)
@@ -527,6 +531,7 @@ class ExportController extends Controller
                     $address->street_name ?? '',
                     $address->town ?? '',
                     $address->postcode ?? '',
+                    $address->elector_count ?? 0,
                     '', // No voting intention
                     '', // No likelihood
                     '', // No intention code
@@ -581,6 +586,7 @@ class ExportController extends Controller
                 $address->street_name,
                 $address->town,
                 $address->postcode,
+                $address->elector_count ?? 0,
                 $votingIntention,
                 $likelihood,
                 $intentionCode,
@@ -596,13 +602,13 @@ class ExportController extends Controller
         }
         
         // Auto-size columns
-        foreach (range('A', 'L') as $col) {
+        foreach (range('A', 'M') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
         
         // Add auto-filter to all columns
         $lastRow = $row - 1;
-        $sheet->setAutoFilter('A1:L' . $lastRow);
+        $sheet->setAutoFilter('A1:M' . $lastRow);
         
         // Set Summary sheet as active when file opens (if it exists)
         if ($totalAddresses !== null) {
