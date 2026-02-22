@@ -323,7 +323,7 @@ class ExportController extends Controller
             'Ward',
             'Postcode',
             'Electors',
-            'Voting Intention',
+            'Home Party',
             'Likelihood',
             'Intention Code',
             'Notes',
@@ -348,7 +348,7 @@ class ExportController extends Controller
                     $address->town ?? '',
                     $address->postcode ?? '',
                     $address->elector_count ?? 0,
-                    '', // No voting intention
+                    '', // No home party
                     '', // No likelihood
                     '', // No intention code
                     '', // No notes
@@ -501,7 +501,7 @@ class ExportController extends Controller
             'Ward',
             'Postcode',
             'Electors',
-            'Voting Intention',
+            'Home Party',
             'Likelihood',
             'Intention Code',
             'Notes',
@@ -550,7 +550,7 @@ class ExportController extends Controller
                     $address->town ?? '',
                     $address->postcode ?? '',
                     $address->elector_count ?? 0,
-                    '', // No voting intention
+                    '', // No home party
                     '', // No likelihood
                     '', // No intention code
                     '', // No notes
@@ -768,7 +768,7 @@ class ExportController extends Controller
             $knockedAddresses++;
             $response = $latestResult->response;
             
-            // Count all responses for knocked addresses, but exclude 'not_home' from voting intentions
+            // Count all responses for knocked addresses, but exclude 'not_home' from home party counts
             if ($response !== 'not_home') {
                 $intentionCounts[$response] = ($intentionCounts[$response] ?? 0) + 1;
             }
@@ -786,7 +786,7 @@ class ExportController extends Controller
         $knockedPercentage = $totalAddresses > 0 ? round(($knockedAddresses / $totalAddresses) * 100, 1) : 0;
         $notKnockedPercentage = $totalAddresses > 0 ? round(($notKnockedAddresses / $totalAddresses) * 100, 1) : 0;
         
-        // Calculate total for voting intentions (excluding not_home)
+        // Calculate total for home parties (excluding not_home)
         $totalVotingIntentions = array_sum($intentionCounts);
         
         // Section 1: Canvassing Progress
@@ -806,8 +806,8 @@ class ExportController extends Controller
         $summarySheet->fromArray(['Total Addresses', $totalAddresses, '100%'], null, 'A7');
         $summarySheet->getStyle('A7:C7')->getFont()->setBold(true);
         
-        // Section 2: Voting Intentions
-        $summarySheet->setCellValue('A9', 'Voting Intentions - Exlcudes Not Home');
+        // Section 2: Home Party
+        $summarySheet->setCellValue('A9', 'Home Party - Excludes Not Home');
         $summarySheet->getStyle('A9')->getFont()->setBold(true)->setSize(14);
         $summarySheet->getStyle('A9')->getFill()
             ->setFillType(Fill::FILL_SOLID)
@@ -944,7 +944,7 @@ class ExportController extends Controller
         $layout = null;
         $plotArea = new PlotArea($layout, [$series]);
         $legend = new Legend(Legend::POSITION_RIGHT, null, false);
-        $title = new Title('Voting Intentions');
+        $title = new Title('Home Party');
         
         $chart = new Chart(
             'votingIntentionsChart',
@@ -1027,7 +1027,7 @@ class ExportController extends Controller
     }
 
     /**
-     * Apply color coding to a row based on voting intention
+     * Apply color coding to a row based on home party
      */
     private function applyRowColorCoding($sheet, $row, $response)
     {

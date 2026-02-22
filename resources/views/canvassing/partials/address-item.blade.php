@@ -182,7 +182,7 @@
                     @method('PUT')
                     
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Voting Intention</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Home Party</label>
                         <select name="response" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
                             @foreach($responseOptions as $value => $label)
                                 <option value="{{ $value }}" {{ $latestResult->response === $value ? 'selected' : '' }}>
@@ -240,7 +240,7 @@
         <input type="hidden" name="address_id" value="{{ $address->id }}">
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Voting Intention</label>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Home Party</label>
             <div class="grid grid-cols-2 gap-2">
                 @foreach($responseOptions as $value => $label)
                     <label class="flex items-center space-x-2 p-2 border rounded hover:bg-gray-50 cursor-pointer">
