@@ -656,7 +656,6 @@ class ExportController extends Controller
         $sheet->freezePane('A2');
         
         // Center align certain columns for better readability
-        $sheet->getStyle('A2:A' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // House number
         $sheet->getStyle('E2:E' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // Electors
         $sheet->getStyle('G2:G' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // Likelihood
         $sheet->getStyle('H2:H' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // Intention code
@@ -718,6 +717,16 @@ class ExportController extends Controller
         // Set Summary sheet as active when file opens (if it exists)
         if ($totalAddresses !== null) {
             $spreadsheet->setActiveSheetIndex(0);
+            // Set selected cell to A1 on summary sheet
+            $spreadsheet->getActiveSheet()->setSelectedCells('A1');
+        } else {
+            // Set selected cell to A1 on knock results sheet
+            $sheet->setSelectedCells('A1');
+        }
+        
+        // Also ensure the data sheet has A1 selected
+        if ($totalAddresses !== null) {
+            $sheet->setSelectedCells('A1');
         }
         
         // Save to storage
@@ -1018,7 +1027,7 @@ class ExportController extends Controller
             'labour' => 'FFCDD2',          // Light red
             'conservative' => 'BBDEFB',    // Light blue
             'lib_dem' => 'FFF9C4',         // Light yellow
-            'reform' => 'E1BEE7',          // Light purple
+            'reform' => 'E0FFFF',          // Light cyan
             'undecided' => 'FFE0B2',       // Light orange
             'refused' => 'F5F5F5',         // Light grey
             'not_home' => 'FFFFFF',        // White (no color)
