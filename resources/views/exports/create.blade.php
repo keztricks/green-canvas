@@ -46,11 +46,11 @@
                 <div class="flex gap-4">
                     @if(auth()->user()->isAdmin())
                         <label class="flex items-center space-x-2 cursor-pointer">
-                            <input type="radio" name="format" value="csv" checked required class="text-[#6AB023]">
+                            <input type="radio" name="format" value="csv" required class="text-[#6AB023]">
                             <span class="text-sm dark:text-gray-200">CSV (Comma-Separated Values)</span>
                         </label>
                         <label class="flex items-center space-x-2 cursor-pointer">
-                            <input type="radio" name="format" value="xlsx" required class="text-[#6AB023]">
+                            <input type="radio" name="format" value="xlsx" checked required class="text-[#6AB023]">
                             <span class="text-sm dark:text-gray-200">XLSX (Excel Spreadsheet)</span>
                         </label>
                     @else
