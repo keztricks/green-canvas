@@ -61,4 +61,29 @@ class Address extends Model
     {
         return $query->where('ward_id', $wardId);
     }
+
+    public function scopeByElectionStatus($query, array $electionFilters)
+    {
+        // If no election filters selected, return all addresses
+        if (empty($electionFilters)) {
+            return $query;
+        }
+
+        // ANY logic: address must match AT LEAST ONE selected election
+        // For each election, ANY of its selected statuses can match
+        $query->where(function($q) use ($electionFilters) {
+            foreach ($electionFilters as $electionId => $statuses) {
+                if (empty($statuses)) {
+                    continue;
+                }
+                
+                $q->orWhereHas('elections', function ($subQ) use ($electionId, $statuses) {
+                    $subQ->where('election_id', $electionId)
+                         ->whereIn('address_election.status', $statuses);
+                });
+            }
+        });
+
+        return $query;
+    }
 }

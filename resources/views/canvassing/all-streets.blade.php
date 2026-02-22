@@ -2,7 +2,7 @@
     <div class="py-6">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="mb-6">
-        <a href="{{ route('canvassing.ward', $ward->id) }}" class="text-[#6AB023] hover:text-[#5a9620]">
+        <a href="{{ route('canvassing.ward', $ward->id) }}{{ request()->has('election_filters') ? '?' . http_build_query(['election_filters' => request('election_filters')]) : '' }}" class="text-[#6AB023] hover:text-[#5a9620]">
             ← Back to {{ $ward->name }} Streets
         </a>
     </div>
@@ -13,6 +13,9 @@
             <h2 class="text-3xl font-bold mb-2 text-gray-800 dark:text-white">All Streets</h2>
             <p class="text-gray-600 dark:text-gray-300">All addresses in this ward</p>
         </div>
+
+        <!-- Election Filters -->
+        @include('canvassing.partials.election-filters')
 
         <!-- Add Address Button -->
         <div class="mb-4 flex justify-end">
@@ -178,6 +181,20 @@ let currentPage = {{ $addresses->currentPage() }};
 let isSearching = false;
 let searchTimeout = null;
 
+// Helper function to build query string with filters
+function buildQueryString(params = {}) {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Preserve election_filters - these come as election_filters[1][], election_filters[2][], etc.
+    for (const [key, value] of urlParams.entries()) {
+        if (key.startsWith('election_filters[')) {
+            params.append(key, value);
+        }
+    }
+    
+    return params.toString();
+}
+
 // Load more addresses
 function loadMoreAddresses() {
     const btn = document.getElementById('loadMoreBtn');
@@ -188,7 +205,11 @@ function loadMoreAddresses() {
     
     currentPage++;
     
-    fetch(`/ward/{{ $ward->id }}/all-streets?page=${currentPage}`, {
+    const params = new URLSearchParams();
+    params.set('page', currentPage);
+    const queryString = buildQueryString(params);
+    
+    fetch(`/ward/{{ $ward->id }}/all-streets?${queryString}`, {
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json'
@@ -221,8 +242,11 @@ document.getElementById('addressSearch').addEventListener('input', function(e) {
     clearTimeout(searchTimeout);
     
     if (searchTerm === '') {
-        // Reload page to show all addresses
-        window.location.href = '{{ route('canvassing.all-streets', $ward) }}';
+        // Preserve filters when clearing search
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.delete('search');
+        const newUrl = urlParams.toString() ? `{{ route('canvassing.all-streets', $ward) }}?${urlParams.toString()}` : '{{ route('canvassing.all-streets', $ward) }}';
+        window.location.href = newUrl;
         return;
     }
     
@@ -236,7 +260,11 @@ document.getElementById('addressSearch').addEventListener('input', function(e) {
 });
 
 function performSearch(searchTerm) {
-    fetch(`/ward/{{ $ward->id }}/all-streets?search=${encodeURIComponent(searchTerm)}`, {
+    const params = new URLSearchParams();
+    params.set('search', searchTerm);
+    const queryString = buildQueryString(params);
+    
+    fetch(`/ward/{{ $ward->id }}/all-streets?${queryString}`, {
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json'
