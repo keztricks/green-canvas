@@ -27,6 +27,22 @@ class AddressImportController extends Controller
         $referenceFiles = [
             'Wainhouse' => storage_path('app/ward-references/wainhouse.csv'),
             'Hebden Bridge & Todmorden East' => storage_path('app/ward-references/hebden-bridge-todmorden-east.csv'),
+            'Brighouse' => storage_path('app/ward-references/brighouse.csv'),
+            'Elland' => storage_path('app/ward-references/elland.csv'),
+            'Greetland' => storage_path('app/ward-references/greetland.csv'),
+            'Halifax Town' => storage_path('app/ward-references/halifax-town.csv'),
+            'Hipperholme & Lightcliffe' => storage_path('app/ward-references/hipperholme-lightcliffe.csv'),
+            'Illingworth & Mixenden' => storage_path('app/ward-references/illingworth-mixenden.csv'),
+            'Luddendenfoot' => storage_path('app/ward-references/luddendenfoot.csv'),
+            'Northowram & Shelf' => storage_path('app/ward-references/northowram-shelf.csv'),
+            'Ovenden' => storage_path('app/ward-references/ovenden.csv'),
+            'Park' => storage_path('app/ward-references/park.csv'),
+            'Rastrick' => storage_path('app/ward-references/rastrick.csv'),
+            'Ryburn' => storage_path('app/ward-references/ryburn.csv'),
+            'Salterhebble Southowram and Skircoat Green' => storage_path('app/ward-references/salterhebble-southowram-skircoat-green.csv'),
+            'Sowerby Bridge' => storage_path('app/ward-references/sowerby-bridge.csv'),
+            'Todmorden West' => storage_path('app/ward-references/todmorden-west.csv'),
+            'Warley' => storage_path('app/ward-references/warley.csv'),
         ];
         
         $postcodeToStreet = [];
@@ -83,13 +99,14 @@ class AddressImportController extends Controller
         $header = fgetcsv($handle);
         
         $imported = 0;
+        $updated = 0;
         $skipped = 0;
-        $duplicates = 0;
 
         DB::beginTransaction();
         
         try {
-            $seen = [];
+            // Track elector count per unique address
+            $addressCounts = [];
             
             // Load street reference for this ward
             $ward = Ward::find($request->ward_id);
@@ -155,35 +172,59 @@ class AddressImportController extends Controller
                     }
                 }
 
-                // Create unique key to avoid duplicate addresses
+                // Create unique key to count electors per address
                 $uniqueKey = strtolower($houseNumber . '|' . $streetName . '|' . $postcode);
                 
-                if (isset($seen[$uniqueKey])) {
-                    $duplicates++;
-                    continue;
+                if (!isset($addressCounts[$uniqueKey])) {
+                    $addressCounts[$uniqueKey] = [
+                        'ward_id' => $request->ward_id,
+                        'house_number' => $houseNumber,
+                        'street_name' => $streetName,
+                        'town' => $town,
+                        'postcode' => $postcode,
+                        'constituency' => 'Halifax',
+                        'sort_order' => $this->extractNumericSort($houseNumber),
+                        'elector_count' => 0,
+                    ];
                 }
                 
-                $seen[$uniqueKey] = true;
+                // Increment elector count for this address
+                $addressCounts[$uniqueKey]['elector_count']++;
+            }
 
-                Address::create([
-                    'ward_id' => $request->ward_id,
-                    'house_number' => $houseNumber,
-                    'street_name' => $streetName,
-                    'town' => $town,
-                    'postcode' => $postcode,
-                    'constituency' => 'Halifax',
-                    'sort_order' => $this->extractNumericSort($houseNumber),
-                ]);
-
-                $imported++;
+            // Now create or update addresses with elector counts
+            foreach ($addressCounts as $addressData) {
+                $address = Address::updateOrCreate(
+                    [
+                        'ward_id' => $addressData['ward_id'],
+                        'house_number' => $addressData['house_number'],
+                        'street_name' => $addressData['street_name'],
+                        'postcode' => $addressData['postcode'],
+                    ],
+                    [
+                        'town' => $addressData['town'],
+                        'constituency' => $addressData['constituency'],
+                        'sort_order' => $addressData['sort_order'],
+                        'elector_count' => $addressData['elector_count'],
+                    ]
+                );
+                
+                if ($address->wasRecentlyCreated) {
+                    $imported++;
+                } else {
+                    $updated++;
+                }
             }
 
             DB::commit();
             fclose($handle);
 
-            $message = "Successfully imported {$imported} unique addresses";
-            if ($duplicates > 0) {
-                $message .= " ({$duplicates} duplicates skipped)";
+            $message = "Successfully processed " . count($addressCounts) . " unique addresses";
+            if ($imported > 0) {
+                $message .= " ({$imported} new)";
+            }
+            if ($updated > 0) {
+                $message .= " ({$updated} updated)";
             }
             if ($skipped > 0) {
                 $message .= " ({$skipped} incomplete records skipped)";
