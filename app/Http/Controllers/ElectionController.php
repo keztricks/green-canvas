@@ -55,6 +55,11 @@ class ElectionController extends Controller
     {
         $address = Address::findOrFail($addressId);
         
+        // Check if user has access to this ward
+        if (!auth()->user()->hasAccessToWard($address->ward_id)) {
+            return response()->json(['success' => false, 'message' => 'Access denied'], 403);
+        }
+        
         $pivot = $address->elections()->where('election_id', $electionId)->first();
         
         if (!$pivot) {

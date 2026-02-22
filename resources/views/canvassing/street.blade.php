@@ -24,7 +24,6 @@
             </button>
         </div>
 
-        @if(auth()->user()->isAdmin())
         <!-- Election Toggle -->
         <div class="mb-4">
             <label class="flex items-center space-x-2 cursor-pointer p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
@@ -35,7 +34,6 @@
                 <span class="text-xs text-gray-500 dark:text-gray-400 ml-auto">Click to toggle</span>
             </label>
         </div>
-        @endif
 
         <div class="space-y-4">
             @foreach($addresses as $address)
