@@ -1,11 +1,8 @@
 @php
-    // Build default filters with all elections and all statuses selected
+    // Build default filters with nothing selected
     $defaultFilters = [];
-    foreach ($elections as $election) {
-        $defaultFilters[$election->id] = ['voted', 'not_voted', 'unknown'];
-    }
     
-    // Use selected filters if present, otherwise use defaults
+    // Use selected filters if present, otherwise use defaults (empty)
     $activeFilters = !empty($selectedElectionFilters) ? $selectedElectionFilters : $defaultFilters;
 @endphp
 
