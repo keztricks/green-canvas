@@ -9,6 +9,11 @@ use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Color;
+use PhpOffice\PhpSpreadsheet\Style\Conditional;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Chart\Chart;
 use PhpOffice\PhpSpreadsheet\Chart\DataSeries;
 use PhpOffice\PhpSpreadsheet\Chart\DataSeriesValues;
@@ -516,9 +521,22 @@ class ExportController extends Controller
             ->getStartColor()->setRGB('6AB023');
         $headerStyle->getFont()->getColor()->setRGB('FFFFFF');
         
-        // Data rows
+        // Sort data by street name then house number for better organization
+        $sortedResults = collect($groupedResults)->sortBy(function($results, $addressId) {
+            $result = $results->first();
+            $address = $result->address ?? $result;
+            $streetName = $address->street_name ?? '';
+            $houseNumber = $address->house_number ?? '';
+            // Pad house number for proper numeric sorting
+            return sprintf('%s_%08d', $streetName, is_numeric($houseNumber) ? $houseNumber : 0);
+        });
+        
+        // Data rows with street grouping
         $row = 2;
-        foreach ($groupedResults as $addressId => $results) {
+        $currentStreet = null;
+        $streetStartRow = 2;
+        
+        foreach ($sortedResults as $addressId => $results) {
             $latestResult = $results->first();
             
             // Handle addresses without knock results
@@ -543,6 +561,15 @@ class ExportController extends Controller
                 ];
                 
                 $sheet->fromArray($rowData, null, 'A' . $row);
+                
+                // Track street changes for grouping
+                $streetName = $address->street_name ?? '';
+                if ($currentStreet !== null && $currentStreet !== $streetName && $row > $streetStartRow) {
+                    $this->addStreetGroupBorder($sheet, $streetStartRow, $row - 1);
+                    $streetStartRow = $row;
+                }
+                $currentStreet = $streetName;
+                
                 $row++;
                 continue;
             }
@@ -598,7 +625,22 @@ class ExportController extends Controller
             ];
             
             $sheet->fromArray($rowData, null, 'A' . $row);
+            $this->applyRowColorCoding($sheet, $row, $latestResult->response);
+            
+            // Track street changes for grouping
+            $streetName = $address->street_name ?? '';
+            if ($currentStreet !== null && $currentStreet !== $streetName && $row > $streetStartRow) {
+                $this->addStreetGroupBorder($sheet, $streetStartRow, $row - 1);
+                $streetStartRow = $row;
+            }
+            $currentStreet = $streetName;
+            
             $row++;
+        }
+        
+        // Add border for the last street group
+        if ($row > $streetStartRow) {
+            $this->addStreetGroupBorder($sheet, $streetStartRow, $row - 1);
         }
         
         // Auto-size columns
@@ -609,6 +651,69 @@ class ExportController extends Controller
         // Add auto-filter to all columns
         $lastRow = $row - 1;
         $sheet->setAutoFilter('A1:M' . $lastRow);
+        
+        // Freeze header row so it stays visible when scrolling
+        $sheet->freezePane('A2');
+        
+        // Center align certain columns for better readability
+        $sheet->getStyle('A2:A' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // House number
+        $sheet->getStyle('E2:E' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // Electors
+        $sheet->getStyle('G2:G' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // Likelihood
+        $sheet->getStyle('H2:H' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // Intention code
+        $sheet->getStyle('L2:L' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // History count
+        
+        // Add conditional formatting for likelihood scores (color scale: green=1 to red=5)
+        if ($lastRow > 1) {
+            $conditional1 = new Conditional();
+            $conditional1->setConditionType(Conditional::CONDITION_CELLIS);
+            $conditional1->setOperatorType(Conditional::OPERATOR_EQUAL);
+            $conditional1->addCondition('1');
+            $conditional1->getStyle()->getFont()->getColor()->setRGB('1B5E20'); // Dark green
+            $conditional1->getStyle()->getFont()->setBold(true);
+            
+            $conditional2 = new Conditional();
+            $conditional2->setConditionType(Conditional::CONDITION_CELLIS);
+            $conditional2->setOperatorType(Conditional::OPERATOR_EQUAL);
+            $conditional2->addCondition('2');
+            $conditional2->getStyle()->getFont()->getColor()->setRGB('388E3C'); // Green
+            
+            $conditional3 = new Conditional();
+            $conditional3->setConditionType(Conditional::CONDITION_CELLIS);
+            $conditional3->setOperatorType(Conditional::OPERATOR_EQUAL);
+            $conditional3->addCondition('3');
+            $conditional3->getStyle()->getFont()->getColor()->setRGB('F57C00'); // Orange
+            
+            $conditional4 = new Conditional();
+            $conditional4->setConditionType(Conditional::CONDITION_CELLIS);
+            $conditional4->setOperatorType(Conditional::OPERATOR_EQUAL);
+            $conditional4->addCondition('4');
+            $conditional4->getStyle()->getFont()->getColor()->setRGB('D32F2F'); // Red
+            
+            $conditional5 = new Conditional();
+            $conditional5->setConditionType(Conditional::CONDITION_CELLIS);
+            $conditional5->setOperatorType(Conditional::OPERATOR_EQUAL);
+            $conditional5->addCondition('5');
+            $conditional5->getStyle()->getFont()->getColor()->setRGB('B71C1C'); // Dark red
+            $conditional5->getStyle()->getFont()->setBold(true);
+            
+            $conditionalStyles = $sheet->getStyle('G2:G' . $lastRow)->getConditionalStyles();
+            $conditionalStyles[] = $conditional1;
+            $conditionalStyles[] = $conditional2;
+            $conditionalStyles[] = $conditional3;
+            $conditionalStyles[] = $conditional4;
+            $conditionalStyles[] = $conditional5;
+            $sheet->getStyle('G2:G' . $lastRow)->setConditionalStyles($conditionalStyles);
+        }
+        
+        // Add border around all data for better readability
+        $sheet->getStyle('A1:M' . $lastRow)->applyFromArray([
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => ['rgb' => 'CCCCCC'],
+                ],
+            ],
+        ]);
         
         // Set Summary sheet as active when file opens (if it exists)
         if ($totalAddresses !== null) {
@@ -901,5 +1006,53 @@ class ExportController extends Controller
         $chart->setBottomRightPosition('S37');
         
         $sheet->addChart($chart);
+    }
+
+    /**
+     * Get the color code for a given response type
+     */
+    private function getResponseColor($response)
+    {
+        return match($response) {
+            'green' => 'C8E6C9',           // Light green
+            'labour' => 'FFCDD2',          // Light red
+            'conservative' => 'BBDEFB',    // Light blue
+            'lib_dem' => 'FFF9C4',         // Light yellow
+            'reform' => 'E1BEE7',          // Light purple
+            'undecided' => 'FFE0B2',       // Light orange
+            'refused' => 'F5F5F5',         // Light grey
+            'not_home' => 'FFFFFF',        // White (no color)
+            default => 'FFFFFF',           // White (no color)
+        };
+    }
+
+    /**
+     * Apply color coding to a row based on voting intention
+     */
+    private function applyRowColorCoding($sheet, $row, $response)
+    {
+        $color = $this->getResponseColor($response);
+        
+        // Apply color to all columns in the row (A to M)
+        $sheet->getStyle('A' . $row . ':M' . $row)
+            ->getFill()
+            ->setFillType(Fill::FILL_SOLID)
+            ->getStartColor()->setRGB($color);
+    }
+
+    /**
+     * Add a visible border between street groups for better organization
+     */
+    private function addStreetGroupBorder($sheet, $startRow, $endRow)
+    {
+        // Add a thicker bottom border to the last row of the street group
+        $sheet->getStyle('A' . $endRow . ':M' . $endRow)->applyFromArray([
+            'borders' => [
+                'bottom' => [
+                    'borderStyle' => Border::BORDER_MEDIUM,
+                    'color' => ['rgb' => '6AB023'], // Green color for street separators
+                ],
+            ],
+        ]);
     }
 }
