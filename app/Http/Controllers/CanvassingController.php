@@ -38,17 +38,42 @@ class CanvassingController extends Controller
             abort(403, 'You do not have access to this ward.');
         }
         
+        // Get filter parameters (election_filters is an array like [1 => ['voted', 'not_voted'], 2 => ['unknown']])
+        $selectedElectionFilters = request('election_filters', []);
+        
+        // Get elections for this ward
+        $elections = \App\Models\Election::where('active', true)
+            ->where(function($query) use ($wardId) {
+                $query->whereDoesntHave('wards')
+                    ->orWhereHas('wards', function($q) use ($wardId) {
+                        $q->where('wards.id', $wardId);
+                    });
+            })
+            ->orderBy('election_date', 'desc')
+            ->get();
+        
         // Get all unique streets in this ward with address counts
-        $streets = Address::byWard($wardId)
-            ->select('street_name', 'town')
+        $addressQuery = Address::byWard($wardId);
+        
+        // Apply election filters
+        if (!empty($selectedElectionFilters)) {
+            $addressQuery->byElectionStatus($selectedElectionFilters);
+        }
+        
+        // Get the filtered address IDs as a subquery
+        $filteredAddressIds = $addressQuery->pluck('id');
+        
+        // Now get street summary with counts based on filtered addresses
+        $streets = Address::select('addresses.street_name as street_name', 'addresses.town as town')
             ->selectRaw('COUNT(DISTINCT addresses.id) as address_count')
             ->selectRaw('COUNT(DISTINCT CASE WHEN knock_results.id IS NOT NULL THEN addresses.id END) as knocked_count')
             ->leftJoin('knock_results', 'addresses.id', '=', 'knock_results.address_id')
-            ->groupBy('street_name', 'town')
-            ->orderBy('street_name')
+            ->whereIn('addresses.id', $filteredAddressIds)
+            ->groupBy('addresses.street_name', 'addresses.town')
+            ->orderBy('addresses.street_name')
             ->get();
 
-        return view('canvassing.ward', compact('ward', 'streets'));
+        return view('canvassing.ward', compact('ward', 'streets', 'elections', 'selectedElectionFilters'));
     }
 
     public function allStreets($wardId)
@@ -60,12 +85,20 @@ class CanvassingController extends Controller
             abort(403, 'You do not have access to this ward.');
         }
         
+        // Get filter parameters
+        $selectedElectionFilters = request('election_filters', []);
+        
         $query = Address::byWard($wardId)
             ->with(['knockResults' => function($query) {
                 $query->with('user')->latest('knocked_at');
             }, 'elections'])
             ->orderBy('street_name')
             ->orderBy('sort_order');
+
+        // Apply election filters
+        if (!empty($selectedElectionFilters)) {
+            $query->byElectionStatus($selectedElectionFilters);
+        }
 
         // Handle search
         if (request()->has('search')) {
@@ -118,7 +151,7 @@ class CanvassingController extends Controller
             ]);
         }
 
-        return view('canvassing.all-streets', compact('ward', 'addresses', 'responseOptions', 'elections'));
+        return view('canvassing.all-streets', compact('ward', 'addresses', 'responseOptions', 'elections', 'selectedElectionFilters'));
     }
 
     public function street($wardId, $streetName)
@@ -130,12 +163,21 @@ class CanvassingController extends Controller
             abort(403, 'You do not have access to this ward.');
         }
         
-        $addresses = Address::byWard($wardId)
+        // Get filter parameters
+        $selectedElectionFilters = request('election_filters', []);
+        
+        $query = Address::byWard($wardId)
             ->byStreet($streetName)
             ->with(['knockResults' => function($query) {
                 $query->with('user')->latest('knocked_at');
-            }, 'elections'])
-            ->get();
+            }, 'elections']);
+        
+        // Apply election filters
+        if (!empty($selectedElectionFilters)) {
+            $query->byElectionStatus($selectedElectionFilters);
+        }
+        
+        $addresses = $query->get();
 
         if ($addresses->isEmpty()) {
             return redirect()->route('canvassing.ward', $wardId)
@@ -154,7 +196,7 @@ class CanvassingController extends Controller
             ->orderBy('election_date', 'desc')
             ->get();
 
-        return view('canvassing.street', compact('ward', 'addresses', 'streetName', 'town', 'responseOptions', 'elections'));
+        return view('canvassing.street', compact('ward', 'addresses', 'streetName', 'town', 'responseOptions', 'elections', 'selectedElectionFilters'));
     }
 
     public function store(Request $request)

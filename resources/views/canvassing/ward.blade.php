@@ -18,14 +18,15 @@
                     </a>
                 </div>
 
+                <!-- Election Filters -->
+                @include('canvassing.partials.election-filters')
+
                 @if($streets->isEmpty())
                     <div class="text-center py-12">
-                        <p class="text-gray-600 dark:text-gray-300 mb-4">No streets in this ward yet.</p>
-                        @if(auth()->user()->isAdmin())
-                            <a href="{{ route('import.index') }}" class="bg-[#6AB023] hover:bg-[#5a9620] text-white px-6 py-2 rounded">
-                                Import Addresses
-                            </a>
-                        @endif
+                        <p class="text-gray-600 dark:text-gray-300 mb-4">No addresses match the selected filters.</p>
+                        <a href="{{ route('canvassing.ward', $ward) }}" class="text-[#6AB023] hover:text-[#5a9620] underline">
+                            Clear filters
+                        </a>
                     </div>
                 @else
                     <!-- Search/Filter Input -->
@@ -38,7 +39,7 @@
 
                     <div id="streetsList" class="space-y-3">
                         @foreach($streets as $street)
-                            <a href="{{ route('canvassing.street', ['ward' => $ward->id, 'streetName' => $street->street_name]) }}" 
+                            <a href="{{ route('canvassing.street', ['ward' => $ward->id, 'streetName' => $street->street_name]) }}{{ request()->has('election_filters') ? '?' . http_build_query(['election_filters' => request('election_filters')]) : '' }}" 
                                class="street-item block p-4 border border-gray-200 dark:border-gray-700 rounded hover:bg-green-50 dark:hover:bg-gray-700 hover:border-[#6AB023] transition"
                                data-street-name="{{ strtolower($street->street_name) }}"
                                data-town="{{ strtolower($street->town) }}">
