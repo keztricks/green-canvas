@@ -15,6 +15,7 @@ class Address extends Model
         'postcode',
         'constituency',
         'sort_order',
+        'elector_count',
         'do_not_knock',
         'do_not_knock_at',
     ];

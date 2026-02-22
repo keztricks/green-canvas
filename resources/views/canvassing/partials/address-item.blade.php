@@ -38,7 +38,14 @@
             <h3 class="text-lg font-semibold {{ ($address->do_not_knock || $isNeverVoter) ? 'text-red-800' : 'text-gray-800' }}">
                 {{ $address->house_number }} {{ $address->street_name }}
             </h3>
-            <p class="text-sm text-gray-600">{{ $address->postcode }}</p>
+            <p class="text-sm text-gray-600">
+                {{ $address->postcode }}
+                @if($address->elector_count > 0)
+                    <span class="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded dark:bg-blue-900 dark:text-blue-200">
+                        {{ $address->elector_count }} {{ Str::plural('elector', $address->elector_count) }}
+                    </span>
+                @endif
+            </p>
 
             @if($elections->isNotEmpty())
                 <div class="mt-2 flex flex-wrap gap-1">
