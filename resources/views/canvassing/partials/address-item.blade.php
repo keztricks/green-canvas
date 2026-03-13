@@ -198,7 +198,7 @@
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Turnout Likelihood</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Turnout Likelihood (optional)</label>
                         <select name="turnout_likelihood" 
                                 x-model="turnoutLikelihood"
                                 @change="if (turnoutLikelihood === 'wont') { response = 'wont_vote'; $el.form.querySelector('select[name=response]').value = 'wont_vote'; }"
@@ -279,7 +279,7 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Turnout Likelihood</label>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Turnout Likelihood (optional)</label>
             <div class="grid grid-cols-3 gap-2">
                 @foreach($turnoutLikelihoodOptions as $value => $label)
                     <label class="flex items-center space-x-2 p-2 border rounded hover:bg-gray-50 cursor-pointer">
