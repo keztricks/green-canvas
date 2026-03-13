@@ -843,11 +843,11 @@ class ExportController extends Controller
             ->setFillType(Fill::FILL_SOLID)
             ->getStartColor()->setRGB('6AB023');
         $summarySheet->getStyle('A' . $greenStartRow)->getFont()->getColor()->setRGB('FFFFFF');
-        $summarySheet->mergeCells('A' . $greenStartRow . ':C' . $greenStartRow);
+        $summarySheet->mergeCells('A' . $greenStartRow . ':D' . $greenStartRow);
         
         $greenHeaderRow = $greenStartRow + 1;
-        $summarySheet->fromArray(['Likelihood', 'Count', 'Description'], null, 'A' . $greenHeaderRow);
-        $summarySheet->getStyle('A' . $greenHeaderRow . ':C' . $greenHeaderRow)->getFont()->setBold(true);
+        $summarySheet->fromArray(['Likelihood', 'Count', 'Percentage', 'Description'], null, 'A' . $greenHeaderRow);
+        $summarySheet->getStyle('A' . $greenHeaderRow . ':D' . $greenHeaderRow)->getFont()->setBold(true);
         
         $likelihoodDescriptions = [
             1 => 'Very Likely',
@@ -857,15 +857,19 @@ class ExportController extends Controller
             5 => 'Never Voter'
         ];
         
+        // Calculate total for percentages
+        $totalGreenLikelihood = array_sum($greenLikelihoodCounts);
+        
         $greenDataRow = $greenHeaderRow + 1;
         foreach ($greenLikelihoodCounts as $likelihood => $count) {
             $description = $likelihoodDescriptions[$likelihood] ?? '';
-            $summarySheet->fromArray([$likelihood, $count, $description], null, 'A' . $greenDataRow);
+            $percentage = $totalGreenLikelihood > 0 ? round(($count / $totalGreenLikelihood) * 100, 1) : 0;
+            $summarySheet->fromArray([$likelihood, $count, $percentage . '%', $description], null, 'A' . $greenDataRow);
             $greenDataRow++;
         }
         
         // Auto-size columns
-        foreach (range('A', 'C') as $col) {
+        foreach (range('A', 'D') as $col) {
             $summarySheet->getColumnDimension($col)->setAutoSize(true);
         }
         
