@@ -4,10 +4,11 @@
     $hasResult = $latestResult !== null;
     $hasHistory = $allResults->count() > 1;
     $isNeverVoter = $latestResult && $latestResult->vote_likelihood == 5;
+    $isWontVote = $latestResult && $latestResult->response === 'wont_vote';
 @endphp
 
 <div id="address-{{ $address->id }}" 
-     class="address-item border rounded-lg p-4 {{ ($address->do_not_knock || $isNeverVoter) ? 'bg-red-50 border-red-500 border-2' : ($hasResult ? 'bg-gray-50 border-gray-300' : 'bg-white border-gray-200') }}"
+     class="address-item border rounded-lg p-4 {{ ($address->do_not_knock || $isNeverVoter || $isWontVote) ? 'bg-red-50 border-red-500 border-2' : ($hasResult ? 'bg-gray-50 border-gray-300' : 'bg-white border-gray-200') }}"
      data-street="{{ strtolower($address->street_name) }}"
      data-house="{{ strtolower($address->house_number) }}">
     @if($address->do_not_knock)
@@ -31,11 +32,16 @@
             <p class="font-bold text-red-800 text-sm">⚠️ NEVER VOTING GREEN</p>
             <p class="text-xs text-red-700 mt-1">Vote likelihood: 5 (Never) - Recorded {{ $latestResult->knocked_at->diffForHumans() }}</p>
         </div>
+    @elseif($isWontVote)
+        <div class="mb-3 p-3 bg-red-100 border-l-4 border-red-500 rounded">
+            <p class="font-bold text-red-800 text-sm">🚫 WON'T VOTE</p>
+            <p class="text-xs text-red-700 mt-1">Resident will not be voting - Recorded {{ $latestResult->knocked_at->diffForHumans() }}</p>
+        </div>
     @endif
 
     <div class="flex justify-between items-start">
         <div class="flex-1">
-            <h3 class="text-lg font-semibold {{ ($address->do_not_knock || $isNeverVoter) ? 'text-red-800' : 'text-gray-800' }}">
+            <h3 class="text-lg font-semibold {{ ($address->do_not_knock || $isNeverVoter || $isWontVote) ? 'text-red-800' : 'text-gray-800' }}">
                 {{ $address->house_number }} {{ $address->street_name }}
             </h3>
             <p class="text-sm text-gray-600">
@@ -79,7 +85,7 @@
             @endif
 
             @if($hasResult)
-                <div class="mt-2 p-3 bg-white rounded border-l-4 {{ ($address->do_not_knock || $isNeverVoter) ? 'hidden' : '' }} latest-result-{{ $address->id }}
+                <div class="mt-2 p-3 bg-white rounded border-l-4 {{ ($address->do_not_knock || $isNeverVoter || $isWontVote) ? 'hidden' : '' }} latest-result-{{ $address->id }}
                     @if($latestResult->response === 'green') border-green-500
                     @elseif($latestResult->response === 'labour') border-red-500
                     @elseif($latestResult->response === 'conservative') border-blue-500
@@ -134,9 +140,9 @@
 
                 @if($hasHistory)
                     <div class="mt-2">
-                        <button onclick="toggleHistory({{ $address->id }}, {{ ($address->do_not_knock || $isNeverVoter) ? 'true' : 'false' }})" 
+                        <button onclick="toggleHistory({{ $address->id }}, {{ ($address->do_not_knock || $isNeverVoter || $isWontVote) ? 'true' : 'false' }})" 
                                 class="text-sm text-gray-600 hover:text-gray-800 underline">
-                            Show history ({{ ($address->do_not_knock || $isNeverVoter) ? $allResults->count() : $allResults->count() - 1 }} {{ ($address->do_not_knock || $isNeverVoter) ? 'results' : 'previous' }})
+                            Show history ({{ ($address->do_not_knock || $isNeverVoter || $isWontVote) ? $allResults->count() : $allResults->count() - 1 }} {{ ($address->do_not_knock || $isNeverVoter || $isWontVote) ? 'results' : 'previous' }})
                         </button>
                         <div id="history-{{ $address->id }}" class="hidden mt-2 space-y-2">
                             @foreach($allResults->skip(1) as $result)
