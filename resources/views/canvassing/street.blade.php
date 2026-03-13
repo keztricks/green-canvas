@@ -224,15 +224,35 @@
                                                     <form id="edit-form-{{ $result->id }}" 
                                                           action="{{ route('knock-result.update', $result) }}" 
                                                           method="POST" 
-                                                          class="hidden mt-3 space-y-2 border-t dark:border-gray-600 pt-2">
+                                                          class="hidden mt-3 space-y-2 border-t dark:border-gray-600 pt-2"
+                                                          x-data="{ turnoutLikelihood: '{{ $result->turnout_likelihood }}', response: '{{ $result->response }}' }">
                                                         @csrf
                                                         @method('PUT')
                                                         
                                                         <div>
                                                             <label class="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Home Party</label>
-                                                            <select name="response" required class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1 text-xs">
+                                                            <select name="response" 
+                                                                    required 
+                                                                    x-model="response"
+                                                                    @change="if (response === 'wont_vote') { turnoutLikelihood = 'wont'; $el.form.querySelector('select[name=turnout_likelihood]').value = 'wont'; }"
+                                                                    class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1 text-xs">
                                                                 @foreach($responseOptions as $value => $label)
                                                                     <option value="{{ $value }}" {{ $result->response === $value ? 'selected' : '' }}>
+                                                                        {{ $label }}
+                                                                    </option>
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
+                                                        
+                                                        <div>
+                                                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Turnout Likelihood</label>
+                                                            <select name="turnout_likelihood" 
+                                                                    x-model="turnoutLikelihood"
+                                                                    @change="if (turnoutLikelihood === 'wont') { response = 'wont_vote'; $el.form.querySelector('select[name=response]').value = 'wont_vote'; }"
+                                                                    class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1 text-xs">
+                                                                <option value="">Not specified</option>
+                                                                @foreach($turnoutLikelihoodOptions as $value => $label)
+                                                                    <option value="{{ $value }}" {{ $result->turnout_likelihood === $value ? 'selected' : '' }}>
                                                                         {{ $label }}
                                                                     </option>
                                                                 @endforeach
@@ -276,15 +296,35 @@
                                 <form id="edit-form-{{ $latestResult->id }}" 
                                       action="{{ route('knock-result.update', $latestResult) }}" 
                                       method="POST" 
-                                      class="hidden mt-3 space-y-2 border-t dark:border-gray-600 pt-3">
+                                      class="hidden mt-3 space-y-2 border-t dark:border-gray-600 pt-3"
+                                      x-data="{ turnoutLikelihood: '{{ $latestResult->turnout_likelihood }}', response: '{{ $latestResult->response }}' }">
                                     @csrf
                                     @method('PUT')
                                     
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Home Party</label>
-                                        <select name="response" required class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-3 py-2 text-sm">
+                                        <select name="response" 
+                                                required 
+                                                x-model="response"
+                                                @change="if (response === 'wont_vote') { turnoutLikelihood = 'wont'; $el.form.querySelector('select[name=turnout_likelihood]').value = 'wont'; }"
+                                                class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-3 py-2 text-sm">
                                             @foreach($responseOptions as $value => $label)
                                                 <option value="{{ $value }}" {{ $latestResult->response === $value ? 'selected' : '' }}>
+                                                    {{ $label }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Turnout Likelihood</label>
+                                        <select name="turnout_likelihood" 
+                                                x-model="turnoutLikelihood"
+                                                @change="if (turnoutLikelihood === 'wont') { response = 'wont_vote'; $el.form.querySelector('select[name=response]').value = 'wont_vote'; }"
+                                                class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-3 py-2 text-sm">
+                                            <option value="">Not specified</option>
+                                            @foreach($turnoutLikelihoodOptions as $value => $label)
+                                                <option value="{{ $value }}" {{ $latestResult->turnout_likelihood === $value ? 'selected' : '' }}>
                                                     {{ $label }}
                                                 </option>
                                             @endforeach
@@ -334,7 +374,8 @@
                     <form id="form-{{ $address->id }}" 
                           action="{{ route('knock-result.store') }}" 
                           method="POST" 
-                          class="mt-4 hidden space-y-3 border-t dark:border-gray-600 pt-4">
+                          class="mt-4 hidden space-y-3 border-t dark:border-gray-600 pt-4"
+                          x-data="{ turnoutLikelihood: '', response: '' }">
                         @csrf
                         <input type="hidden" name="address_id" value="{{ $address->id }}">
 
@@ -343,7 +384,30 @@
                             <div class="grid grid-cols-2 gap-2">
                                 @foreach($responseOptions as $value => $label)
                                     <label class="flex items-center space-x-2 p-2 border dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer dark:text-gray-200">
-                                        <input type="radio" name="response" value="{{ $value }}" required class="text-green-600">
+                                        <input type="radio" 
+                                               name="response" 
+                                               value="{{ $value }}" 
+                                               required 
+                                               x-model="response"
+                                               @change="if (response === 'wont_vote') { turnoutLikelihood = 'wont'; document.querySelector('#form-{{ $address->id }} input[name=turnout_likelihood][value=wont]').checked = true; }"
+                                               class="text-green-600">
+                                        <span class="text-sm">{{ $label }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Turnout Likelihood</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                @foreach($turnoutLikelihoodOptions as $value => $label)
+                                    <label class="flex items-center space-x-2 p-2 border dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer dark:text-gray-200">
+                                        <input type="radio" 
+                                               name="turnout_likelihood" 
+                                               value="{{ $value }}" 
+                                               x-model="turnoutLikelihood"
+                                               @change="if (turnoutLikelihood === 'wont') { response = 'wont_vote'; document.querySelector('#form-{{ $address->id }} input[name=response][value=wont_vote]').checked = true; }"
+                                               class="text-green-600">
                                         <span class="text-sm">{{ $label }}</span>
                                     </label>
                                 @endforeach
