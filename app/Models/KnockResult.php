@@ -12,6 +12,7 @@ class KnockResult extends Model
         'user_id',
         'response',
         'vote_likelihood',
+        'turnout_likelihood',
         'notes',
         'knocked_at',
     ];
@@ -42,7 +43,17 @@ class KnockResult extends Model
             'your_party' => 'Your Party',
             'undecided' => 'Undecided',
             'refused' => 'Refused to Say',
+            'wont_vote' => "Won't Vote",
             'other' => 'Other Party',
+        ];
+    }
+    
+    public static function turnoutLikelihoodOptions(): array
+    {
+        return [
+            'wont' => "Won't",
+            'might' => 'Might',
+            'will' => 'Will',
         ];
     }
 }

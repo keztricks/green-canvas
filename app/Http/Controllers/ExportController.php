@@ -325,6 +325,7 @@ class ExportController extends Controller
             'Electors',
             'Home Party',
             'Likelihood',
+            'Turnout Likelihood',
             'Intention Code',
             'Notes',
             'User',
@@ -350,6 +351,7 @@ class ExportController extends Controller
                     $address->elector_count ?? 0,
                     '', // No home party
                     '', // No likelihood
+                    '', // No turnout likelihood
                     '', // No intention code
                     '', // No notes
                     '', // No user
@@ -367,6 +369,7 @@ class ExportController extends Controller
             // Format response and likelihood separately
             $votingIntention = $this->formatResponse($latestResult->response);
             $likelihood = $latestResult->vote_likelihood ?? '';
+            $turnoutLikelihood = $this->formatTurnoutLikelihood($latestResult->turnout_likelihood);
             $intentionCode = $this->formatIntention($latestResult->response, $latestResult->vote_likelihood);
             
             // Handle knocked_at as string or Carbon instance
@@ -408,6 +411,7 @@ class ExportController extends Controller
                 $address->elector_count ?? 0,
                 $votingIntention,
                 $likelihood,
+                $turnoutLikelihood,
                 $intentionCode,
                 $latestResult->notes ?? '',
                 $latestResult->user?->name ?? '',
@@ -466,10 +470,26 @@ class ExportController extends Controller
             'undecided' => 'Undecided',
             'not_home' => 'Not Home',
             'refused' => 'Refused to Say',
+            'wont_vote' => "Won't Vote",
             'other' => 'Other',
         ];
 
         return $labels[$response] ?? ucfirst($response);
+    }
+
+    private function formatTurnoutLikelihood($turnoutLikelihood)
+    {
+        if (!$turnoutLikelihood) {
+            return '';
+        }
+        
+        $labels = [
+            'wont' => "Won't",
+            'might' => 'Might',
+            'will' => 'Will',
+        ];
+        
+        return $labels[$turnoutLikelihood] ?? ucfirst($turnoutLikelihood);
     }
 
     private function generateXLSX($groupedResults, $filename, $totalAddresses = null, $wardId = null)
@@ -503,6 +523,7 @@ class ExportController extends Controller
             'Electors',
             'Home Party',
             'Likelihood',
+            'Turnout Likelihood',
             'Intention Code',
             'Notes',
             'User',
@@ -514,7 +535,7 @@ class ExportController extends Controller
         $sheet->fromArray($headers, null, 'A1');
         
         // Style header row
-        $headerStyle = $sheet->getStyle('A1:M1');
+        $headerStyle = $sheet->getStyle('A1:N1');
         $headerStyle->getFont()->setBold(true)->setSize(12);
         $headerStyle->getFill()
             ->setFillType(Fill::FILL_SOLID)
@@ -552,6 +573,7 @@ class ExportController extends Controller
                     $address->elector_count ?? 0,
                     '', // No home party
                     '', // No likelihood
+                    '', // No turnout likelihood
                     '', // No intention code
                     '', // No notes
                     '', // No user
@@ -580,6 +602,7 @@ class ExportController extends Controller
             
             $votingIntention = $this->formatResponse($latestResult->response);
             $likelihood = $latestResult->vote_likelihood ?? '';
+            $turnoutLikelihood = $this->formatTurnoutLikelihood($latestResult->turnout_likelihood);
             $intentionCode = $this->formatIntention($latestResult->response, $latestResult->vote_likelihood);
             
             // Handle knocked_at as string or Carbon instance
@@ -616,6 +639,7 @@ class ExportController extends Controller
                 $address->elector_count ?? 0,
                 $votingIntention,
                 $likelihood,
+                $turnoutLikelihood,
                 $intentionCode,
                 $latestResult->notes ?? '',
                 $latestResult->user ? $latestResult->user->name : 'Unknown',
@@ -644,13 +668,13 @@ class ExportController extends Controller
         }
         
         // Auto-size columns
-        foreach (range('A', 'M') as $col) {
+        foreach (range('A', 'N') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
         
         // Add auto-filter to all columns
         $lastRow = $row - 1;
-        $sheet->setAutoFilter('A1:M' . $lastRow);
+        $sheet->setAutoFilter('A1:N' . $lastRow);
         
         // Freeze header row so it stays visible when scrolling
         $sheet->freezePane('A2');
@@ -658,8 +682,9 @@ class ExportController extends Controller
         // Center align certain columns for better readability
         $sheet->getStyle('E2:E' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // Electors
         $sheet->getStyle('G2:G' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // Likelihood
-        $sheet->getStyle('H2:H' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // Intention code
-        $sheet->getStyle('L2:L' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // History count
+        $sheet->getStyle('H2:H' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // Turnout Likelihood
+        $sheet->getStyle('I2:I' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // Intention code
+        $sheet->getStyle('M2:M' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // History count
         
         // Add conditional formatting for likelihood scores (color scale: green=1 to red=5)
         if ($lastRow > 1) {
@@ -705,7 +730,7 @@ class ExportController extends Controller
         }
         
         // Add border around all data for better readability
-        $sheet->getStyle('A1:M' . $lastRow)->applyFromArray([
+        $sheet->getStyle('A1:N' . $lastRow)->applyFromArray([
             'borders' => [
                 'allBorders' => [
                     'borderStyle' => Border::BORDER_THIN,
@@ -1034,6 +1059,7 @@ class ExportController extends Controller
             'reform' => 'E0FFFF',          // Light cyan
             'undecided' => 'FFE0B2',       // Light orange
             'refused' => 'F5F5F5',         // Light grey
+            'wont_vote' => 'E0E0E0',       // Medium grey
             'not_home' => 'FFFFFF',        // White (no color)
             default => 'FFFFFF',           // White (no color)
         };

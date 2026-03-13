@@ -123,6 +123,7 @@ class CanvassingController extends Controller
         }
 
         $responseOptions = KnockResult::responseOptions();
+        $turnoutLikelihoodOptions = KnockResult::turnoutLikelihoodOptions();
         $elections = \App\Models\Election::where('active', true)
             ->where(function($query) use ($wardId) {
                 $query->whereDoesntHave('wards')
@@ -135,10 +136,11 @@ class CanvassingController extends Controller
 
         // Return JSON for AJAX requests
         if (request()->wantsJson() || request()->ajax()) {
-            $addressesHtml = $addresses->map(function($address) use ($responseOptions, $elections) {
+            $addressesHtml = $addresses->map(function($address) use ($responseOptions, $turnoutLikelihoodOptions, $elections) {
                 return view('canvassing.partials.address-item', [
                     'address' => $address,
                     'responseOptions' => $responseOptions,
+                    'turnoutLikelihoodOptions' => $turnoutLikelihoodOptions,
                     'elections' => $elections
                 ])->render();
             });
@@ -151,7 +153,7 @@ class CanvassingController extends Controller
             ]);
         }
 
-        return view('canvassing.all-streets', compact('ward', 'addresses', 'responseOptions', 'elections', 'selectedElectionFilters'));
+        return view('canvassing.all-streets', compact('ward', 'addresses', 'responseOptions', 'turnoutLikelihoodOptions', 'elections', 'selectedElectionFilters'));
     }
 
     public function street($wardId, $streetName)
@@ -186,6 +188,7 @@ class CanvassingController extends Controller
 
         $town = $addresses->first()->town;
         $responseOptions = KnockResult::responseOptions();
+        $turnoutLikelihoodOptions = KnockResult::turnoutLikelihoodOptions();
         $elections = \App\Models\Election::where('active', true)
             ->where(function($query) use ($wardId) {
                 $query->whereDoesntHave('wards')
@@ -196,15 +199,16 @@ class CanvassingController extends Controller
             ->orderBy('election_date', 'desc')
             ->get();
 
-        return view('canvassing.street', compact('ward', 'addresses', 'streetName', 'town', 'responseOptions', 'elections', 'selectedElectionFilters'));
+        return view('canvassing.street', compact('ward', 'addresses', 'streetName', 'town', 'responseOptions', 'turnoutLikelihoodOptions', 'elections', 'selectedElectionFilters'));
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
             'address_id' => 'required|exists:addresses,id',
-            'response' => 'required|in:not_home,conservative,labour,lib_dem,green,reform,your_party,undecided,refused,other',
+            'response' => 'required|in:not_home,conservative,labour,lib_dem,green,reform,your_party,undecided,refused,wont_vote,other',
             'vote_likelihood' => 'nullable|integer|min:1|max:5',
+            'turnout_likelihood' => 'nullable|in:wont,might,will',
             'notes' => 'nullable|string|max:1000',
         ]);
 
@@ -225,8 +229,9 @@ class CanvassingController extends Controller
     public function update(Request $request, KnockResult $knockResult)
     {
         $validated = $request->validate([
-            'response' => 'required|in:not_home,conservative,labour,lib_dem,green,reform,your_party,undecided,refused,other',
+            'response' => 'required|in:not_home,conservative,labour,lib_dem,green,reform,your_party,undecided,refused,wont_vote,other',
             'vote_likelihood' => 'nullable|integer|min:1|max:5',
+            'turnout_likelihood' => 'nullable|in:wont,might,will',
             'notes' => 'nullable|string|max:1000',
         ]);
 
