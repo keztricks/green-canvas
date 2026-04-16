@@ -10,8 +10,10 @@ if [ ! -f "$APP_DIR/.env" ]; then
     cp "$APP_DIR/.env.example" "$APP_DIR/.env"
 fi
 
-# Set APP_URL from Fly.io machine name if not already set explicitly
-if [ -n "$FLY_APP_NAME" ] && [ -z "$APP_URL_SET" ]; then
+# Override APP_URL if provided via environment (App Runner, Fly.io, etc.)
+if [ -n "$APP_URL" ] && [ "$APP_URL" != "http://localhost" ]; then
+    sed -i "s|APP_URL=.*|APP_URL=$APP_URL|" "$APP_DIR/.env"
+elif [ -n "$FLY_APP_NAME" ]; then
     sed -i "s|APP_URL=.*|APP_URL=https://${FLY_APP_NAME}.fly.dev|" "$APP_DIR/.env"
 fi
 
