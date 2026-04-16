@@ -5,8 +5,8 @@ on:
     types: [opened, synchronize, reopened, closed]
 
 env:
-  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-  APP_NAME: green-canvas-pr-${{ github.event.number }}
+  SERVICE_NAME: green-canvas-pr-${{ github.event.number }}
+  ECR_REPO: green-canvas
 
 jobs:
   deploy-preview:
@@ -16,37 +16,125 @@ jobs:
 
     permissions:
       pull-requests: write
+      contents: read
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up flyctl
-        uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'eu-west-2' }}
 
-      - name: Create Fly app if it does not exist
+      - name: Log in to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Ensure ECR repository exists
         run: |
-          flyctl apps list | grep -q "^${{ env.APP_NAME }}" \
-            || flyctl apps create "${{ env.APP_NAME }}" --org personal
+          aws ecr describe-repositories --repository-names $ECR_REPO 2>/dev/null \
+            || aws ecr create-repository --repository-name $ECR_REPO
 
-      - name: Set APP_KEY secret on Fly app
+      - name: Build and push Docker image
+        id: build
+        run: |
+          IMAGE_URI="${{ steps.ecr-login.outputs.registry }}/$ECR_REPO:pr-${{ github.event.number }}-${{ github.sha }}"
+          docker build -t "$IMAGE_URI" .
+          docker push "$IMAGE_URI"
+          echo "image_uri=$IMAGE_URI" >> $GITHUB_OUTPUT
+
+      - name: Deploy App Runner service
+        id: deploy
+        env:
+          IMAGE_URI: ${{ steps.build.outputs.image_uri }}
+          ROLE_ARN: ${{ secrets.AWS_APPRUNNER_ECR_ROLE_ARN }}
         run: |
           APP_KEY=$(php -r "echo 'base64:' . base64_encode(random_bytes(32));")
-          flyctl secrets set APP_KEY="$APP_KEY" \
-            --app "${{ env.APP_NAME }}" \
-            --stage
 
-      - name: Deploy to Fly.io
-        run: |
-          flyctl deploy \
-            --app "${{ env.APP_NAME }}" \
-            --config fly.toml \
-            --env APP_ENV=preview \
-            --env APP_DEBUG=true \
-            --env APP_URL="https://${{ env.APP_NAME }}.fly.dev" \
-            --env APP_URL_SET=1 \
-            --remote-only \
-            --wait-timeout 300
+          # Build source config JSON with given APP_URL
+          source_config() {
+            jq -n \
+              --arg image "$IMAGE_URI" \
+              --arg url  "$1" \
+              --arg key  "$APP_KEY" \
+              --arg role "$ROLE_ARN" \
+              '{
+                ImageRepository: {
+                  ImageIdentifier: $image,
+                  ImageConfiguration: {
+                    Port: "8080",
+                    RuntimeEnvironmentVariables: {
+                      APP_ENV:   "preview",
+                      APP_DEBUG: "true",
+                      APP_KEY:   $key,
+                      APP_URL:   $url
+                    }
+                  },
+                  ImageRepositoryType: "ECR"
+                },
+                AutoDeploymentsEnabled: false,
+                AuthenticationConfiguration: { AccessRoleArn: $role }
+              }'
+          }
+
+          wait_running() {
+            local arn="$1"
+            # Brief pause so status can transition to OPERATION_IN_PROGRESS if an update just fired
+            sleep 6
+            for i in $(seq 1 60); do
+              STATUS=$(aws apprunner describe-service --service-arn "$arn" --query 'Service.Status' --output text)
+              echo "  status: $STATUS"
+              [ "$STATUS" = "RUNNING"      ] && return 0
+              [ "$STATUS" = "CREATE_FAILED" ] && echo "Create failed" && return 1
+              [ "$STATUS" = "UPDATE_FAILED" ] && echo "Update failed" && return 1
+              sleep 10
+            done
+            echo "Timed out waiting for RUNNING" && return 1
+          }
+
+          # Detect existing service
+          EXISTING_ARN=$(aws apprunner list-services --output json \
+            | jq -r --arg n "$SERVICE_NAME" \
+                '.ServiceSummaryList[] | select(.ServiceName==$n) | .ServiceArn' \
+            | head -1)
+
+          if [ -n "$EXISTING_ARN" ]; then
+            SERVICE_URL=$(aws apprunner describe-service \
+              --service-arn "$EXISTING_ARN" \
+              --query 'Service.ServiceUrl' --output text)
+
+            echo "Updating existing service..."
+            aws apprunner update-service \
+              --service-arn "$EXISTING_ARN" \
+              --source-configuration "$(source_config "https://$SERVICE_URL")"
+
+            wait_running "$EXISTING_ARN"
+            SERVICE_ARN="$EXISTING_ARN"
+          else
+            echo "Creating new service..."
+            CREATE_OUT=$(aws apprunner create-service \
+              --service-name "$SERVICE_NAME" \
+              --source-configuration "$(source_config "http://placeholder")" \
+              --instance-configuration '{"Cpu":"0.25 vCPU","Memory":"0.5 GB"}')
+
+            SERVICE_ARN=$(echo "$CREATE_OUT" | jq -r '.Service.ServiceArn')
+            SERVICE_URL=$(echo "$CREATE_OUT" | jq -r '.Service.ServiceUrl')
+
+            echo "Waiting for initial deploy..."
+            wait_running "$SERVICE_ARN"
+
+            echo "Updating with real APP_URL..."
+            aws apprunner update-service \
+              --service-arn "$SERVICE_ARN" \
+              --source-configuration "$(source_config "https://$SERVICE_URL")"
+
+            wait_running "$SERVICE_ARN"
+          fi
+
+          echo "service_arn=$SERVICE_ARN"   >> $GITHUB_OUTPUT
+          echo "service_url=https://$SERVICE_URL" >> $GITHUB_OUTPUT
 
       - name: Find existing PR comment
         id: find-comment
@@ -65,19 +153,16 @@ jobs:
           body: |
             ## Preview deployment
 
-            Your preview is live at: **https://${{ env.APP_NAME }}.fly.dev**
+            Your preview is live at: **${{ steps.deploy.outputs.service_url }}**
 
             | | |
             |---|---|
-            | App | `${{ env.APP_NAME }}` |
             | Commit | `${{ github.sha }}` |
             | Branch | `${{ github.head_ref }}` |
 
             **Login credentials:**
             - `admin@example.com` / `password`
             - `canvasser@example.com` / `password`
-
-            > Sleeps when idle — first request after inactivity takes ~5s to wake.
 
   destroy-preview:
     name: Destroy PR Preview
@@ -88,11 +173,25 @@ jobs:
       pull-requests: write
 
     steps:
-      - name: Set up flyctl
-        uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'eu-west-2' }}
 
-      - name: Destroy Fly app
-        run: flyctl apps destroy "${{ env.APP_NAME }}" --yes || true
+      - name: Delete App Runner service
+        run: |
+          SERVICE_ARN=$(aws apprunner list-services --output json \
+            | jq -r --arg n "$SERVICE_NAME" \
+                '.ServiceSummaryList[] | select(.ServiceName==$n) | .ServiceArn' \
+            | head -1)
+          if [ -n "$SERVICE_ARN" ]; then
+            aws apprunner delete-service --service-arn "$SERVICE_ARN"
+            echo "Deleted $SERVICE_NAME"
+          else
+            echo "Service not found, nothing to delete"
+          fi
 
       - name: Find existing PR comment
         id: find-comment
@@ -102,7 +201,7 @@ jobs:
           comment-author: "github-actions[bot]"
           body-includes: "Preview deployment"
 
-      - name: Update comment to show destroyed
+      - name: Update PR comment to show destroyed
         if: steps.find-comment.outputs.comment-id != ''
         uses: peter-evans/create-or-update-comment@v4
         with:
@@ -112,4 +211,4 @@ jobs:
           body: |
             ## Preview deployment (destroyed)
 
-            PR closed — preview environment `${{ env.APP_NAME }}` has been torn down.
+            PR closed — preview environment `${{ env.SERVICE_NAME }}` has been torn down.
