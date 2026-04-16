@@ -13,7 +13,7 @@ COPY vite.config.js tailwind.config.js postcss.config.js ./
 RUN npm run build
 
 # Stage 2: PHP-FPM + Nginx runtime
-FROM php:8.2-fpm-alpine AS runtime
+FROM php:8.4-fpm-alpine AS runtime
 
 RUN apk add --no-cache \
     nginx \
