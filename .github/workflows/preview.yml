@@ -1,0 +1,115 @@
+name: PR Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+env:
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+  APP_NAME: green-canvas-pr-${{ github.event.number }}
+
+jobs:
+  deploy-preview:
+    name: Deploy PR Preview
+    runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
+
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Create Fly app if it does not exist
+        run: |
+          flyctl apps list | grep -q "^${{ env.APP_NAME }}" \
+            || flyctl apps create "${{ env.APP_NAME }}" --org personal
+
+      - name: Set APP_KEY secret on Fly app
+        run: |
+          APP_KEY=$(php -r "echo 'base64:' . base64_encode(random_bytes(32));")
+          flyctl secrets set APP_KEY="$APP_KEY" \
+            --app "${{ env.APP_NAME }}" \
+            --stage
+
+      - name: Deploy to Fly.io
+        run: |
+          flyctl deploy \
+            --app "${{ env.APP_NAME }}" \
+            --config fly.toml \
+            --env APP_ENV=preview \
+            --env APP_DEBUG=true \
+            --env APP_URL="https://${{ env.APP_NAME }}.fly.dev" \
+            --env APP_URL_SET=1 \
+            --remote-only \
+            --wait-timeout 300
+
+      - name: Find existing PR comment
+        id: find-comment
+        uses: peter-evans/find-comment@v3
+        with:
+          issue-number: ${{ github.event.number }}
+          comment-author: "github-actions[bot]"
+          body-includes: "Preview deployment"
+
+      - name: Post preview URL comment
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.number }}
+          edit-mode: replace
+          body: |
+            ## Preview deployment
+
+            Your preview is live at: **https://${{ env.APP_NAME }}.fly.dev**
+
+            | | |
+            |---|---|
+            | App | `${{ env.APP_NAME }}` |
+            | Commit | `${{ github.sha }}` |
+            | Branch | `${{ github.head_ref }}` |
+
+            **Login credentials:**
+            - `admin@example.com` / `password`
+            - `canvasser@example.com` / `password`
+
+            > Sleeps when idle — first request after inactivity takes ~5s to wake.
+
+  destroy-preview:
+    name: Destroy PR Preview
+    runs-on: ubuntu-latest
+    if: github.event.action == 'closed'
+
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Set up flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Destroy Fly app
+        run: flyctl apps destroy "${{ env.APP_NAME }}" --yes || true
+
+      - name: Find existing PR comment
+        id: find-comment
+        uses: peter-evans/find-comment@v3
+        with:
+          issue-number: ${{ github.event.number }}
+          comment-author: "github-actions[bot]"
+          body-includes: "Preview deployment"
+
+      - name: Update comment to show destroyed
+        if: steps.find-comment.outputs.comment-id != ''
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.number }}
+          edit-mode: replace
+          body: |
+            ## Preview deployment (destroyed)
+
+            PR closed — preview environment `${{ env.APP_NAME }}` has been torn down.
