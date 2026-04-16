@@ -25,12 +25,17 @@ RUN apk add --no-cache \
     unzip \
     icu-dev \
     curl \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install \
         pdo_sqlite \
         zip \
         intl \
         opcache \
-        pcntl
+        pcntl \
+        gd
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
