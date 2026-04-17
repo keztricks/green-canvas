@@ -87,7 +87,9 @@ class CanvassingController extends Controller
         
         // Get filter parameters
         $selectedElectionFilters = request('election_filters', []);
-        
+        $selectedResponseFilters = array_filter((array) request('response_filters', []));
+        $selectedLikelihoodFilters = array_filter((array) request('likelihood_filters', []));
+
         $query = Address::byWard($wardId)
             ->with(['knockResults' => function($query) {
                 $query->with('user')->latest('knocked_at');
@@ -99,6 +101,9 @@ class CanvassingController extends Controller
         if (!empty($selectedElectionFilters)) {
             $query->byElectionStatus($selectedElectionFilters);
         }
+
+        // Apply knock result filters
+        $query->byKnockResponse($selectedResponseFilters, $selectedLikelihoodFilters);
 
         // Handle search
         if (request()->has('search')) {
@@ -117,7 +122,9 @@ class CanvassingController extends Controller
 
         $addresses = $query->paginate(50);
 
-        if ($addresses->isEmpty() && !request()->has('search')) {
+        $hasActiveFilters = !empty($selectedElectionFilters) || !empty($selectedResponseFilters) || !empty($selectedLikelihoodFilters);
+
+        if ($addresses->isEmpty() && !request()->has('search') && !$hasActiveFilters) {
             return redirect()->route('canvassing.ward', $wardId)
                 ->with('error', 'No addresses found in this ward');
         }
@@ -153,7 +160,7 @@ class CanvassingController extends Controller
             ]);
         }
 
-        return view('canvassing.all-streets', compact('ward', 'addresses', 'responseOptions', 'turnoutLikelihoodOptions', 'elections', 'selectedElectionFilters'));
+        return view('canvassing.all-streets', compact('ward', 'addresses', 'responseOptions', 'turnoutLikelihoodOptions', 'elections', 'selectedElectionFilters', 'selectedResponseFilters', 'selectedLikelihoodFilters'));
     }
 
     public function street($wardId, $streetName)
@@ -167,26 +174,35 @@ class CanvassingController extends Controller
         
         // Get filter parameters
         $selectedElectionFilters = request('election_filters', []);
-        
+        $selectedResponseFilters = array_filter((array) request('response_filters', []));
+        $selectedLikelihoodFilters = array_filter((array) request('likelihood_filters', []));
+
         $query = Address::byWard($wardId)
             ->byStreet($streetName)
             ->with(['knockResults' => function($query) {
                 $query->with('user')->latest('knocked_at');
             }, 'elections']);
-        
+
         // Apply election filters
         if (!empty($selectedElectionFilters)) {
             $query->byElectionStatus($selectedElectionFilters);
         }
-        
+
+        // Apply knock result filters
+        $query->byKnockResponse($selectedResponseFilters, $selectedLikelihoodFilters);
+
         $addresses = $query->get();
 
-        if ($addresses->isEmpty()) {
+        $hasActiveFilters = !empty($selectedElectionFilters) || !empty($selectedResponseFilters) || !empty($selectedLikelihoodFilters);
+
+        if ($addresses->isEmpty() && !$hasActiveFilters) {
             return redirect()->route('canvassing.ward', $wardId)
                 ->with('error', 'Street not found');
         }
 
-        $town = $addresses->first()->town;
+        $town = $addresses->first()->town
+            ?? Address::byWard($wardId)->byStreet($streetName)->value('town')
+            ?? '';
         $responseOptions = KnockResult::responseOptions();
         $turnoutLikelihoodOptions = KnockResult::turnoutLikelihoodOptions();
         $elections = \App\Models\Election::where('active', true)
@@ -199,7 +215,7 @@ class CanvassingController extends Controller
             ->orderBy('election_date', 'desc')
             ->get();
 
-        return view('canvassing.street', compact('ward', 'addresses', 'streetName', 'town', 'responseOptions', 'turnoutLikelihoodOptions', 'elections', 'selectedElectionFilters'));
+        return view('canvassing.street', compact('ward', 'addresses', 'streetName', 'town', 'responseOptions', 'turnoutLikelihoodOptions', 'elections', 'selectedElectionFilters', 'selectedResponseFilters', 'selectedLikelihoodFilters'));
     }
 
     public function store(Request $request)
