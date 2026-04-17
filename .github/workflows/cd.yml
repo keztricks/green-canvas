@@ -118,17 +118,21 @@ jobs:
           APP_KEY: ${{ secrets.APP_KEY }}
           APP_VERSION: ${{ steps.version.outputs.app_version }}
           LITESTREAM_REPLICA_URL: s3://${{ secrets.LITESTREAM_BUCKET }}/database/database.sqlite
+          AWS_ACCESS_KEY_ID_VAL: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY_VAL: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
           SERVICE_NAME="green-canvas-prod"
 
           source_config() {
             jq -n \
-              --arg image "$IMAGE_URI" \
-              --arg url   "$1" \
-              --arg key   "$APP_KEY" \
-              --arg role  "$ROLE_ARN" \
-              --arg ver   "$APP_VERSION" \
-              --arg ls    "$LITESTREAM_REPLICA_URL" \
+              --arg image   "$IMAGE_URI" \
+              --arg url     "$1" \
+              --arg key     "$APP_KEY" \
+              --arg role    "$ROLE_ARN" \
+              --arg ver     "$APP_VERSION" \
+              --arg ls      "$LITESTREAM_REPLICA_URL" \
+              --arg aws_key "$AWS_ACCESS_KEY_ID_VAL" \
+              --arg aws_sec "$AWS_SECRET_ACCESS_KEY_VAL" \
               '{
                 ImageRepository: {
                   ImageIdentifier: $image,
@@ -140,7 +144,9 @@ jobs:
                       APP_KEY:                $key,
                       APP_URL:                $url,
                       APP_VERSION:            $ver,
-                      LITESTREAM_REPLICA_URL: $ls
+                      LITESTREAM_REPLICA_URL: $ls,
+                      AWS_ACCESS_KEY_ID:      $aws_key,
+                      AWS_SECRET_ACCESS_KEY:  $aws_sec
                     }
                   },
                   ImageRepositoryType: "ECR"
@@ -267,17 +273,21 @@ jobs:
           APP_KEY: ${{ secrets.APP_KEY_BETA }}
           APP_VERSION: ${{ steps.version.outputs.app_version }}
           LITESTREAM_REPLICA_URL: s3://${{ secrets.LITESTREAM_BUCKET_BETA }}/database/database.sqlite
+          AWS_ACCESS_KEY_ID_VAL: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY_VAL: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
           SERVICE_NAME="green-canvas-beta"
 
           source_config() {
             jq -n \
-              --arg image "$IMAGE_URI" \
-              --arg url   "$1" \
-              --arg key   "$APP_KEY" \
-              --arg role  "$ROLE_ARN" \
-              --arg ver   "$APP_VERSION" \
-              --arg ls    "$LITESTREAM_REPLICA_URL" \
+              --arg image   "$IMAGE_URI" \
+              --arg url     "$1" \
+              --arg key     "$APP_KEY" \
+              --arg role    "$ROLE_ARN" \
+              --arg ver     "$APP_VERSION" \
+              --arg ls      "$LITESTREAM_REPLICA_URL" \
+              --arg aws_key "$AWS_ACCESS_KEY_ID_VAL" \
+              --arg aws_sec "$AWS_SECRET_ACCESS_KEY_VAL" \
               '{
                 ImageRepository: {
                   ImageIdentifier: $image,
@@ -289,7 +299,9 @@ jobs:
                       APP_KEY:                $key,
                       APP_URL:                $url,
                       APP_VERSION:            $ver,
-                      LITESTREAM_REPLICA_URL: $ls
+                      LITESTREAM_REPLICA_URL: $ls,
+                      AWS_ACCESS_KEY_ID:      $aws_key,
+                      AWS_SECRET_ACCESS_KEY:  $aws_sec
                     }
                   },
                   ImageRepositoryType: "ECR"
