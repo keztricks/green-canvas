@@ -261,8 +261,8 @@ jobs:
         continue-on-error: true
         run: |
           aws s3 cp \
-            "s3://${{ secrets.LITESTREAM_BUCKET }}/database/database.sqlite" \
-            "s3://${{ secrets.LITESTREAM_BUCKET_BETA }}/database/database.sqlite"
+            "s3://${{ vars.LITESTREAM_BUCKET_PROD }}/database/database.sqlite" \
+            "s3://${{ secrets.LITESTREAM_BUCKET }}/database/database.sqlite"
           echo "Database synced from prod to beta"
 
       - name: Deploy App Runner service
@@ -270,9 +270,9 @@ jobs:
         env:
           IMAGE_URI: ${{ steps.build.outputs.image_uri }}
           ROLE_ARN: ${{ secrets.AWS_APPRUNNER_ECR_ROLE_ARN }}
-          APP_KEY: ${{ secrets.APP_KEY_BETA }}
+          APP_KEY: ${{ secrets.APP_KEY }}
           APP_VERSION: ${{ steps.version.outputs.app_version }}
-          LITESTREAM_REPLICA_URL: s3://${{ secrets.LITESTREAM_BUCKET_BETA }}/database/database.sqlite
+          LITESTREAM_REPLICA_URL: s3://${{ secrets.LITESTREAM_BUCKET }}/database/database.sqlite
           AWS_ACCESS_KEY_ID_VAL: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY_VAL: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
