@@ -108,9 +108,8 @@ class UserController extends Controller
         if ($currentUser->isWardAdmin()) {
             $userWardIds = $currentUser->wards->pluck('id')->toArray();
             $targetUserWardIds = $user->wards->pluck('id')->toArray();
-            
-            // Check if there's any overlap
-            if (empty(array_intersect($userWardIds, $targetUserWardIds)) && !$user->wards->isEmpty()) {
+
+            if (empty(array_intersect($userWardIds, $targetUserWardIds))) {
                 abort(403, 'You do not have permission to edit this user.');
             }
         }
@@ -140,12 +139,11 @@ class UserController extends Controller
         if ($currentUser->isWardAdmin()) {
             $userWardIds = $currentUser->wards->pluck('id')->toArray();
             $targetUserWardIds = $user->wards->pluck('id')->toArray();
-            
-            // Check if there's any overlap or user has no wards
-            if (empty(array_intersect($userWardIds, $targetUserWardIds)) && !$user->wards->isEmpty()) {
+
+            if (empty(array_intersect($userWardIds, $targetUserWardIds))) {
                 abort(403, 'You do not have permission to edit this user.');
             }
-            
+
             // Ward admins cannot edit admin users
             if ($user->isAdmin()) {
                 abort(403, 'You do not have permission to edit admin users.');
