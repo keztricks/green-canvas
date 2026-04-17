@@ -92,7 +92,9 @@
                             Ward
                         </label>
                         <select name="ward_id" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#6AB023]">
-                            <option value="">All Wards</option>
+                            @if(auth()->user()->isAdmin())
+                                <option value="">All Wards</option>
+                            @endif
                             @foreach($wards as $ward)
                                 <option value="{{ $ward->id }}">{{ $ward->name }}</option>
                             @endforeach
