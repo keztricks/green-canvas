@@ -67,7 +67,7 @@ jobs:
                     Port: "8080",
                     RuntimeEnvironmentVariables: {
                       APP_ENV:   "preview",
-                      APP_DEBUG: "true",
+                      APP_DEBUG: "false",
                       APP_KEY:   $key,
                       APP_URL:   $url
                     }
