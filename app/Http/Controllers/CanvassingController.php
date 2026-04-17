@@ -212,9 +212,12 @@ class CanvassingController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
+        $address = Address::findOrFail($validated['address_id']);
+        abort_if(!auth()->user()->hasAccessToWard($address->ward_id), 403, 'You do not have access to this ward.');
+
         $validated['knocked_at'] = now();
         $validated['user_id'] = auth()->id();
-        
+
         KnockResult::create($validated);
 
         $redirect = back()->with('success', 'Result recorded successfully')->withFragment('address-' . $validated['address_id']);
@@ -228,6 +231,8 @@ class CanvassingController extends Controller
 
     public function update(Request $request, KnockResult $knockResult)
     {
+        abort_if(!auth()->user()->hasAccessToWard($knockResult->address->ward_id), 403, 'You do not have access to this ward.');
+
         $validated = $request->validate([
             'response' => 'required|in:not_home,conservative,labour,lib_dem,green,reform,your_party,undecided,refused,wont_vote,other',
             'vote_likelihood' => 'nullable|integer|min:1|max:5',
@@ -248,6 +253,8 @@ class CanvassingController extends Controller
 
     public function destroy(Request $request, KnockResult $knockResult)
     {
+        abort_if(!auth()->user()->hasAccessToWard($knockResult->address->ward_id), 403, 'You do not have access to this ward.');
+
         $knockResult->delete();
 
         $redirect = back()->with('success', 'Result deleted successfully');
@@ -261,6 +268,8 @@ class CanvassingController extends Controller
 
     public function markDoNotKnock(Request $request, Address $address)
     {
+        abort_if(!auth()->user()->hasAccessToWard($address->ward_id), 403, 'You do not have access to this ward.');
+
         $address->update([
             'do_not_knock' => true,
             'do_not_knock_at' => now(),
@@ -277,6 +286,8 @@ class CanvassingController extends Controller
 
     public function clearDoNotKnock(Request $request, Address $address)
     {
+        abort_if(!auth()->user()->hasAccessToWard($address->ward_id), 403, 'You do not have access to this ward.');
+
         $address->update([
             'do_not_knock' => false,
             'do_not_knock_at' => null,
@@ -299,6 +310,8 @@ class CanvassingController extends Controller
             'town' => 'required|string|max:255',
             'postcode' => 'required|string|max:10',
         ]);
+
+        abort_if(!auth()->user()->hasAccessToWard($validated['ward_id']), 403, 'You do not have access to this ward.');
 
         // Check for duplicate
         $exists = Address::where('ward_id', $validated['ward_id'])
