@@ -104,10 +104,10 @@ jobs:
       - name: Backup production database
         continue-on-error: true
         run: |
-          BACKUP_KEY="backups/$(date +%Y%m%d_%H%M%S)_pre-deploy.sqlite"
-          aws s3 cp \
-            "s3://${{ secrets.LITESTREAM_BUCKET }}/database/database.sqlite" \
-            "s3://${{ secrets.LITESTREAM_BUCKET }}/$BACKUP_KEY"
+          BACKUP_KEY="backups/$(date +%Y%m%d_%H%M%S)"
+          aws s3 sync \
+            "s3://${{ secrets.LITESTREAM_BUCKET }}/database/database.sqlite/" \
+            "s3://${{ secrets.LITESTREAM_BUCKET }}/$BACKUP_KEY/"
           echo "Backed up to $BACKUP_KEY"
 
       - name: Deploy App Runner service
@@ -260,9 +260,9 @@ jobs:
       - name: Sync production database to beta
         continue-on-error: true
         run: |
-          aws s3 cp \
-            "s3://${{ vars.LITESTREAM_BUCKET_PROD }}/database/database.sqlite" \
-            "s3://${{ secrets.LITESTREAM_BUCKET }}/database/database.sqlite"
+          aws s3 sync \
+            "s3://${{ vars.LITESTREAM_BUCKET_PROD }}/database/database.sqlite/" \
+            "s3://${{ secrets.LITESTREAM_BUCKET }}/database/database.sqlite/"
           echo "Database synced from prod to beta"
 
       - name: Deploy App Runner service
