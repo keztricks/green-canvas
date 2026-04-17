@@ -1,0 +1,214 @@
+name: PR Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+env:
+  SERVICE_NAME: green-canvas-pr-${{ github.event.number }}
+  ECR_REPO: green-canvas
+
+jobs:
+  deploy-preview:
+    name: Deploy PR Preview
+    runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
+
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'eu-west-2' }}
+
+      - name: Log in to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Ensure ECR repository exists
+        run: |
+          aws ecr describe-repositories --repository-names $ECR_REPO 2>/dev/null \
+            || aws ecr create-repository --repository-name $ECR_REPO
+
+      - name: Build and push Docker image
+        id: build
+        run: |
+          IMAGE_URI="${{ steps.ecr-login.outputs.registry }}/$ECR_REPO:pr-${{ github.event.number }}-${{ github.sha }}"
+          docker build -t "$IMAGE_URI" .
+          docker push "$IMAGE_URI"
+          echo "image_uri=$IMAGE_URI" >> $GITHUB_OUTPUT
+
+      - name: Deploy App Runner service
+        id: deploy
+        env:
+          IMAGE_URI: ${{ steps.build.outputs.image_uri }}
+          ROLE_ARN: ${{ secrets.AWS_APPRUNNER_ECR_ROLE_ARN }}
+        run: |
+          APP_KEY=$(php -r "echo 'base64:' . base64_encode(random_bytes(32));")
+
+          # Build source config JSON with given APP_URL
+          source_config() {
+            jq -n \
+              --arg image "$IMAGE_URI" \
+              --arg url  "$1" \
+              --arg key  "$APP_KEY" \
+              --arg role "$ROLE_ARN" \
+              '{
+                ImageRepository: {
+                  ImageIdentifier: $image,
+                  ImageConfiguration: {
+                    Port: "8080",
+                    RuntimeEnvironmentVariables: {
+                      APP_ENV:   "preview",
+                      APP_DEBUG: "false",
+                      APP_KEY:   $key,
+                      APP_URL:   $url
+                    }
+                  },
+                  ImageRepositoryType: "ECR"
+                },
+                AutoDeploymentsEnabled: false,
+                AuthenticationConfiguration: { AccessRoleArn: $role }
+              }'
+          }
+
+          wait_running() {
+            local arn="$1"
+            # Brief pause so status can transition to OPERATION_IN_PROGRESS if an update just fired
+            sleep 6
+            for i in $(seq 1 60); do
+              STATUS=$(aws apprunner describe-service --service-arn "$arn" --query 'Service.Status' --output text)
+              echo "  status: $STATUS"
+              [ "$STATUS" = "RUNNING"      ] && return 0
+              [ "$STATUS" = "CREATE_FAILED" ] && echo "Create failed" && return 1
+              [ "$STATUS" = "UPDATE_FAILED" ] && echo "Update failed" && return 1
+              sleep 10
+            done
+            echo "Timed out waiting for RUNNING" && return 1
+          }
+
+          # Detect existing service
+          EXISTING_ARN=$(aws apprunner list-services --output json \
+            | jq -r --arg n "$SERVICE_NAME" \
+                '.ServiceSummaryList[] | select(.ServiceName==$n) | .ServiceArn' \
+            | head -1)
+
+          if [ -n "$EXISTING_ARN" ]; then
+            SERVICE_URL=$(aws apprunner describe-service \
+              --service-arn "$EXISTING_ARN" \
+              --query 'Service.ServiceUrl' --output text)
+
+            echo "Updating existing service..."
+            aws apprunner update-service \
+              --service-arn "$EXISTING_ARN" \
+              --source-configuration "$(source_config "https://$SERVICE_URL")"
+
+            wait_running "$EXISTING_ARN"
+            SERVICE_ARN="$EXISTING_ARN"
+          else
+            echo "Creating new service..."
+            CREATE_OUT=$(aws apprunner create-service \
+              --service-name "$SERVICE_NAME" \
+              --source-configuration "$(source_config "http://placeholder")" \
+              --instance-configuration '{"Cpu":"0.25 vCPU","Memory":"0.5 GB"}')
+
+            SERVICE_ARN=$(echo "$CREATE_OUT" | jq -r '.Service.ServiceArn')
+            SERVICE_URL=$(echo "$CREATE_OUT" | jq -r '.Service.ServiceUrl')
+
+            echo "Waiting for initial deploy..."
+            wait_running "$SERVICE_ARN"
+
+            echo "Updating with real APP_URL..."
+            aws apprunner update-service \
+              --service-arn "$SERVICE_ARN" \
+              --source-configuration "$(source_config "https://$SERVICE_URL")"
+
+            wait_running "$SERVICE_ARN"
+          fi
+
+          echo "service_arn=$SERVICE_ARN"   >> $GITHUB_OUTPUT
+          echo "service_url=https://$SERVICE_URL" >> $GITHUB_OUTPUT
+
+      - name: Find existing PR comment
+        id: find-comment
+        uses: peter-evans/find-comment@v3
+        with:
+          issue-number: ${{ github.event.number }}
+          comment-author: "github-actions[bot]"
+          body-includes: "Preview deployment"
+
+      - name: Post preview URL comment
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.number }}
+          edit-mode: replace
+          body: |
+            ## Preview deployment
+
+            Your preview is live at: **${{ steps.deploy.outputs.service_url }}**
+
+            | | |
+            |---|---|
+            | Commit | `${{ github.sha }}` |
+            | Branch | `${{ github.head_ref }}` |
+
+            **Login credentials:**
+            - `admin@example.com` / `password`
+            - `canvasser@example.com` / `password`
+
+  destroy-preview:
+    name: Destroy PR Preview
+    runs-on: ubuntu-latest
+    if: github.event.action == 'closed'
+
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'eu-west-2' }}
+
+      - name: Delete App Runner service
+        run: |
+          SERVICE_ARN=$(aws apprunner list-services --output json \
+            | jq -r --arg n "$SERVICE_NAME" \
+                '.ServiceSummaryList[] | select(.ServiceName==$n) | .ServiceArn' \
+            | head -1)
+          if [ -n "$SERVICE_ARN" ]; then
+            aws apprunner delete-service --service-arn "$SERVICE_ARN"
+            echo "Deleted $SERVICE_NAME"
+          else
+            echo "Service not found, nothing to delete"
+          fi
+
+      - name: Find existing PR comment
+        id: find-comment
+        uses: peter-evans/find-comment@v3
+        with:
+          issue-number: ${{ github.event.number }}
+          comment-author: "github-actions[bot]"
+          body-includes: "Preview deployment"
+
+      - name: Update PR comment to show destroyed
+        if: steps.find-comment.outputs.comment-id != ''
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.number }}
+          edit-mode: replace
+          body: |
+            ## Preview deployment (destroyed)
+
+            PR closed — preview environment `${{ env.SERVICE_NAME }}` has been torn down.
