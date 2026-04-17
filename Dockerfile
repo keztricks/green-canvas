@@ -39,6 +39,14 @@ RUN apk add --no-cache \
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+ARG LITESTREAM_VERSION=0.3.13
+ARG TARGETARCH=amd64
+RUN ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "arm64" || echo "amd64") \
+    && wget -qO /tmp/litestream.tar.gz \
+         "https://github.com/benbjohnson/litestream/releases/download/v${LITESTREAM_VERSION}/litestream-v${LITESTREAM_VERSION}-linux-${ARCH}.tar.gz" \
+    && tar -xz -C /usr/local/bin -f /tmp/litestream.tar.gz \
+    && rm /tmp/litestream.tar.gz
+
 WORKDIR /var/www/html
 
 # Install PHP deps first (layer cache: only rebuilds on composer.lock changes)
@@ -58,9 +66,10 @@ RUN composer run-script post-autoload-dump
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/supervisord.conf /etc/supervisord.conf
 COPY docker/php.ini /usr/local/etc/php/conf.d/app.ini
+COPY docker/litestream-replicate.sh /usr/local/bin/litestream-replicate.sh
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh /usr/local/bin/litestream-replicate.sh \
     && mkdir -p \
         storage/framework/sessions \
         storage/framework/views \

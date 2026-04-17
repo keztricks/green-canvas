@@ -23,7 +23,15 @@ if ! grep -q "^APP_KEY=base64:" "$APP_DIR/.env"; then
     php "$APP_DIR/artisan" key:generate --force
 fi
 
-# Create SQLite file if it doesn't exist
+# Restore database from Litestream replica (S3) if configured
+if [ -n "$LITESTREAM_REPLICA_URL" ]; then
+    echo "[entrypoint] Restoring database from $LITESTREAM_REPLICA_URL..."
+    litestream restore -if-replica-exists -o "$APP_DIR/database/database.sqlite" "$LITESTREAM_REPLICA_URL" \
+        && echo "[entrypoint] Database restored." \
+        || echo "[entrypoint] No replica found, starting fresh."
+fi
+
+# Create SQLite file if it doesn't exist (first run or no Litestream)
 if [ ! -f "$APP_DIR/database/database.sqlite" ]; then
     touch "$APP_DIR/database/database.sqlite"
     chown www-data:www-data "$APP_DIR/database/database.sqlite"
@@ -40,6 +48,10 @@ if [ "$USER_COUNT" = "0" ]; then
     echo "[entrypoint] Seeding demo data..."
     php "$APP_DIR/artisan" db:seed --force
 fi
+
+# Always sync feature flags (safe: updates/inserts only)
+echo "[entrypoint] Syncing feature flags..."
+php "$APP_DIR/artisan" db:seed --class=FeatureFlagSeeder --force
 
 # Warm caches
 echo "[entrypoint] Caching config, routes, views..."
