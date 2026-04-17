@@ -267,12 +267,12 @@ class ExportController extends Controller
         
         // Verify user has access to this export
         if (!$user->isAdmin()) {
-            // If export has a ward filter, check access to that ward
-            if ($export->ward_id && !$user->hasAccessToWard($export->ward_id)) {
+            // All-wards exports (no ward_id) are admin-only; ward-specific exports require matching ward access
+            if (!$export->ward_id || !$user->hasAccessToWard($export->ward_id)) {
                 abort(403, 'You do not have access to this export.');
             }
         }
-        
+
         $filePath = 'exports/' . $export->filename;
         
         if (!Storage::disk('local')->exists($filePath)) {
@@ -294,8 +294,8 @@ class ExportController extends Controller
         
         // Verify user has access to delete this export
         if (!$user->isAdmin()) {
-            // If export has a ward filter, check access to that ward
-            if ($export->ward_id && !$user->hasAccessToWard($export->ward_id)) {
+            // All-wards exports (no ward_id) are admin-only; ward-specific exports require matching ward access
+            if (!$export->ward_id || !$user->hasAccessToWard($export->ward_id)) {
                 abort(403, 'You do not have access to delete this export.');
             }
         }
