@@ -17,6 +17,9 @@
         <!-- Election Filters -->
         @include('canvassing.partials.election-filters')
 
+        <!-- Knock Result Filters -->
+        @include('canvassing.partials.knock-filters')
+
         <!-- Add Address Button -->
         <div class="mb-4 flex justify-end">
             <button onclick="toggleAddressModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center gap-2">
@@ -182,14 +185,13 @@ let searchTimeout = null;
 // Helper function to build query string with filters
 function buildQueryString(params = {}) {
     const urlParams = new URLSearchParams(window.location.search);
-    
-    // Preserve election_filters - these come as election_filters[1][], election_filters[2][], etc.
+
     for (const [key, value] of urlParams.entries()) {
-        if (key.startsWith('election_filters[')) {
+        if (key.startsWith('election_filters[') || key === 'response_filters[]' || key === 'likelihood_filters[]') {
             params.append(key, value);
         }
     }
-    
+
     return params.toString();
 }
 

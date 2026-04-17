@@ -17,6 +17,9 @@
         <!-- Election Filters -->
         @include('canvassing.partials.election-filters')
 
+        <!-- Knock Result Filters -->
+        @include('canvassing.partials.knock-filters')
+
         <!-- Add Address Button -->
         <div class="mb-4 flex justify-end">
             <button onclick="toggleAddressModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center gap-2">
