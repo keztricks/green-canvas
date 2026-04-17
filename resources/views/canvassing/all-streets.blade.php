@@ -17,6 +17,9 @@
         <!-- Election Filters -->
         @include('canvassing.partials.election-filters')
 
+        <!-- Knock Result Filters -->
+        @include('canvassing.partials.knock-filters')
+
         <!-- Add Address Button -->
         <div class="mb-4 flex justify-end">
             <button onclick="toggleAddressModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center gap-2">
@@ -43,6 +46,16 @@
                 <span class="text-xs text-gray-500 dark:text-gray-400 ml-auto">Click to toggle</span>
             </label>
         </div>
+
+        @if($addresses->isEmpty())
+            <div class="text-center py-12 text-gray-500 dark:text-gray-400">
+                <p class="text-lg font-medium mb-2">No addresses match your filters</p>
+                <p class="text-sm mb-4">Try adjusting or clearing your filters.</p>
+                <a href="{{ url()->current() }}" class="inline-block bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-800 dark:text-white px-4 py-2 rounded text-sm font-medium">
+                    Clear Filters
+                </a>
+            </div>
+        @endif
 
         <div id="addressesList" class="space-y-4">
             @foreach($addresses as $address)
@@ -182,14 +195,13 @@ let searchTimeout = null;
 // Helper function to build query string with filters
 function buildQueryString(params = {}) {
     const urlParams = new URLSearchParams(window.location.search);
-    
-    // Preserve election_filters - these come as election_filters[1][], election_filters[2][], etc.
+
     for (const [key, value] of urlParams.entries()) {
-        if (key.startsWith('election_filters[')) {
+        if (key.startsWith('election_filters[') || key === 'response_filters[]' || key === 'likelihood_filters[]') {
             params.append(key, value);
         }
     }
-    
+
     return params.toString();
 }
 

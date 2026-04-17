@@ -65,6 +65,23 @@ class Address extends Model
         return $query->where('ward_id', $wardId);
     }
 
+    public function scopeByKnockResponse($query, array $responses, array $likelihoods): void
+    {
+        if (empty($responses) && empty($likelihoods)) {
+            return;
+        }
+
+        $query->whereHas('knockResults', function ($q) use ($responses, $likelihoods) {
+            $q->whereRaw('knocked_at = (SELECT MAX(kr2.knocked_at) FROM knock_results kr2 WHERE kr2.address_id = knock_results.address_id)');
+            if (!empty($responses)) {
+                $q->whereIn('response', $responses);
+            }
+            if (!empty($likelihoods)) {
+                $q->whereIn('vote_likelihood', $likelihoods);
+            }
+        });
+    }
+
     public function scopeByElectionStatus($query, array $electionFilters)
     {
         // If no election filters selected, return all addresses
