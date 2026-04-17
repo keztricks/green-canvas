@@ -122,7 +122,9 @@ class CanvassingController extends Controller
 
         $addresses = $query->paginate(50);
 
-        if ($addresses->isEmpty() && !request()->has('search')) {
+        $hasActiveFilters = !empty($selectedElectionFilters) || !empty($selectedResponseFilters) || !empty($selectedLikelihoodFilters);
+
+        if ($addresses->isEmpty() && !request()->has('search') && !$hasActiveFilters) {
             return redirect()->route('canvassing.ward', $wardId)
                 ->with('error', 'No addresses found in this ward');
         }
@@ -191,12 +193,16 @@ class CanvassingController extends Controller
 
         $addresses = $query->get();
 
-        if ($addresses->isEmpty()) {
+        $hasActiveFilters = !empty($selectedElectionFilters) || !empty($selectedResponseFilters) || !empty($selectedLikelihoodFilters);
+
+        if ($addresses->isEmpty() && !$hasActiveFilters) {
             return redirect()->route('canvassing.ward', $wardId)
                 ->with('error', 'Street not found');
         }
 
-        $town = $addresses->first()->town;
+        $town = $addresses->first()->town
+            ?? Address::byWard($wardId)->byStreet($streetName)->value('town')
+            ?? '';
         $responseOptions = KnockResult::responseOptions();
         $turnoutLikelihoodOptions = KnockResult::turnoutLikelihoodOptions();
         $elections = \App\Models\Election::where('active', true)
