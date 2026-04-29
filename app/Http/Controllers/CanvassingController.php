@@ -254,6 +254,7 @@ class CanvassingController extends Controller
                 'label'      => $address->house_number . ' ' . $address->street_name,
                 'address'    => $address->full_address,
                 'street'     => $address->street_name,
+                'postcode'   => $address->postcode,
                 'dnk'        => $address->do_not_knock,
                 'response'   => $latest?->response,
                 'turnout'    => $latest?->turnout_likelihood,
