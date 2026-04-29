@@ -437,7 +437,7 @@
             maxZoom: 19,
         }).addTo(map);
 
-        var clusterGroup = L.markerClusterGroup({ maxClusterRadius: 40, disableClusteringAtZoom: 17 });
+        var clusterGroup = L.markerClusterGroup({ maxClusterRadius: 40, disableClusteringAtZoom: 15 });
 
         var markers = addresses.map(function (a) {
             var marker = L.circleMarker([a.lat, a.lng], {
