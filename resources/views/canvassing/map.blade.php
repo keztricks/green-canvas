@@ -301,7 +301,7 @@
             });
         });
 
-        // ── Per-postcode aggregates for choropleth ───────────────────────────
+        // ── Per-postcode aggregates (used to build sector-level data) ────────
 
         postcodes.forEach(function (pc) {
             pc.postcode   = addresses[pc.idxs[0]].postcode;
@@ -316,32 +316,65 @@
                 if (r !== 'not_home') pc.engaged++;
                 if (SUPPORTER_PARTIES.indexOf(r) !== -1) pc.supporters++;
             });
-            pc.coverage = pc.total > 0 ? pc.knocked / pc.total : 0;
-            pc.support  = pc.engaged > 0 ? pc.supporters / pc.engaged : null;
+        });
+
+        // ── Per-sector aggregates for choropleth (e.g. HX1 1AA → HX1 1) ──────
+
+        function postcodeSector(pc) {
+            if (!pc) return null;
+            var clean = pc.replace(/\s+/g, '').toUpperCase();
+            if (clean.length < 5) return null;
+            return clean.slice(0, -3) + ' ' + clean.charAt(clean.length - 3);
+        }
+
+        var sectorMap = {};
+        postcodes.forEach(function (pc) {
+            var s = postcodeSector(pc.postcode);
+            if (!s) return;
+            if (!sectorMap[s]) sectorMap[s] = {
+                sector: s,
+                _sumLat: 0, _sumLng: 0, _weight: 0,
+                total: 0, knocked: 0, engaged: 0, supporters: 0,
+            };
+            var sec = sectorMap[s];
+            sec._sumLat    += pc.lat * pc.total;
+            sec._sumLng    += pc.lng * pc.total;
+            sec._weight    += pc.total;
+            sec.total      += pc.total;
+            sec.knocked    += pc.knocked;
+            sec.engaged    += pc.engaged;
+            sec.supporters += pc.supporters;
+        });
+        var sectors = Object.values(sectorMap).map(function (s) {
+            s.lat      = s._sumLat / s._weight;
+            s.lng      = s._sumLng / s._weight;
+            s.coverage = s.total > 0 ? s.knocked / s.total : 0;
+            s.support  = s.engaged > 0 ? s.supporters / s.engaged : null;
+            return s;
         });
 
         // ── Voronoi tessellation (built lazily on first choropleth view) ─────
 
         var voronoi = null;
         function buildVoronoi() {
-            if (voronoi || !window.d3 || !d3.Delaunay || postcodes.length === 0) return voronoi;
-            var pts = postcodes.map(function (p) { return [p.lng, p.lat]; });
+            if (voronoi || !window.d3 || !d3.Delaunay || sectors.length === 0) return voronoi;
+            var pts = sectors.map(function (s) { return [s.lng, s.lat]; });
             var pad = 0.005;
             var minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
-            postcodes.forEach(function (p) {
-                if (p.lng < minLng) minLng = p.lng;
-                if (p.lng > maxLng) maxLng = p.lng;
-                if (p.lat < minLat) minLat = p.lat;
-                if (p.lat > maxLat) maxLat = p.lat;
+            sectors.forEach(function (s) {
+                if (s.lng < minLng) minLng = s.lng;
+                if (s.lng > maxLng) maxLng = s.lng;
+                if (s.lat < minLat) minLat = s.lat;
+                if (s.lat > maxLat) maxLat = s.lat;
             });
             var delaunay = d3.Delaunay.from(pts);
             voronoi = delaunay.voronoi([minLng - pad, minLat - pad, maxLng + pad, maxLat + pad]);
             return voronoi;
         }
 
-        function coverageColor(pc) {
-            if (pc.total === 0) return '#f3f4f6';
-            var p = pc.coverage;
+        function coverageColor(s) {
+            if (s.total === 0) return '#f3f4f6';
+            var p = s.coverage;
             if (p === 0)     return '#f3f4f6';
             if (p < 0.25)    return '#fde68a';
             if (p < 0.50)    return '#bbf7d0';
@@ -349,9 +382,9 @@
             return '#15803d';
         }
 
-        function supportColor(pc) {
-            if (pc.engaged === 0) return '#e5e7eb';
-            var p = pc.support;
+        function supportColor(s) {
+            if (s.engaged === 0) return '#e5e7eb';
+            var p = s.support;
             if (p < 0.20)    return '#dc2626';
             if (p < 0.40)    return '#f97316';
             if (p < 0.60)    return '#facc15';
@@ -359,14 +392,14 @@
             return '#16a34a';
         }
 
-        function buildPostcodePopup(pc) {
-            var supportPct = pc.engaged > 0 ? Math.round(pc.support * 100) + '%' : 'no data';
+        function buildSectorPopup(s) {
+            var supportPct = s.engaged > 0 ? Math.round(s.support * 100) + '%' : 'no data';
             return '<div style="min-width:170px;font-size:0.875rem">'
-                + '<strong>' + esc(pc.postcode) + '</strong><br>'
-                + '<span style="color:#6b7280">' + pc.total + ' addresses</span><br><br>'
-                + 'Knocked: <strong>' + pc.knocked + '/' + pc.total + '</strong>'
-                + ' (' + Math.round(pc.coverage * 100) + '%)<br>'
-                + 'Supporters: <strong>' + pc.supporters + '</strong>'
+                + '<strong>' + esc(s.sector) + '</strong><br>'
+                + '<span style="color:#6b7280">' + s.total + ' addresses</span><br><br>'
+                + 'Knocked: <strong>' + s.knocked + '/' + s.total + '</strong>'
+                + ' (' + Math.round(s.coverage * 100) + '%)<br>'
+                + 'Supporters: <strong>' + s.supporters + '</strong>'
                 + ' (' + supportPct + ' of engaged)'
                 + '</div>';
         }
@@ -375,16 +408,16 @@
         function showVoronoi(view) {
             if (!buildVoronoi()) return;
             voronoiLayer = L.layerGroup();
-            postcodes.forEach(function (pc, i) {
+            sectors.forEach(function (sec, i) {
                 var cell = voronoi.cellPolygon(i);
                 if (!cell) return;
                 var latlngs = cell.map(function (pt) { return [pt[1], pt[0]]; });
-                var fill = view === 'coverage' ? coverageColor(pc) : supportColor(pc);
+                var fill = view === 'coverage' ? coverageColor(sec) : supportColor(sec);
                 var poly = L.polygon(latlngs, {
                     color: '#374151', weight: 0.6,
                     fillColor: fill, fillOpacity: 0.55,
                 });
-                poly.bindPopup(function () { return buildPostcodePopup(pc); });
+                poly.bindPopup(function () { return buildSectorPopup(sec); });
                 voronoiLayer.addLayer(poly);
             });
             voronoiLayer.addTo(map);
