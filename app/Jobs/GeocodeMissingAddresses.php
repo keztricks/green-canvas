@@ -25,7 +25,7 @@ class GeocodeMissingAddresses implements ShouldQueue
             ->values()
             ->all();
 
-        foreach (array_chunk($postcodes, 100) as $batch) {
+        foreach (array_chunk($postcodes, 100, false) as $batch) {
             $results = GeocodeAddresses::lookupPostcodes($batch);
             foreach ($results as $postcode => $coords) {
                 if ($coords) {

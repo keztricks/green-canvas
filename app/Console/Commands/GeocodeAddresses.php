@@ -38,7 +38,7 @@ class GeocodeAddresses extends Command
         $failed = 0;
 
         foreach ($uniquePostcodes->chunk(100) as $batch) {
-            $results = $this->lookupPostcodes($batch->all());
+            $results = $this->lookupPostcodes(array_values($batch->all()));
             $bar->advance($batch->count());
 
             foreach ($results as $postcode => $coords) {
