@@ -77,8 +77,10 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script>
     (function () {
-        var addresses   = @json($addressData);
-        var baseStreetUrl = '{{ url('/ward/' . $ward->id . '/street/') }}/';
+        var addresses        = @json($addressData);
+        var streetUrlTpl     = '{{ route('canvassing.street', ['ward' => $ward->id, 'streetName' => '__STREET__']) }}';
+        var RESPONSE_LABELS  = @json($responseOptions);
+        var TURNOUT_LABELS   = @json($turnoutOptions);
 
         // ── Colour schemes ──────────────────────────────────────────────────
 
@@ -138,61 +140,53 @@
 
         var LEGENDS = {
             supporter: [
-                [null, 'Not knocked', '#9ca3af'],
-                [null, 'Strong supporter (1–2)', '#16a34a'],
-                [null, 'Supporter', '#86efac'],
-                [null, 'Opposition', '#ef4444'],
-                [null, 'Not home', '#fb923c'],
-                [null, 'Undecided', '#facc15'],
-                [null, "Refused / won't vote", '#64748b'],
-                [null, 'Do not knock', '#7f1d1d'],
+                ['Not knocked',          '#9ca3af'],
+                ['Strong supporter (1–2)', '#16a34a'],
+                ['Supporter',            '#86efac'],
+                ['Opposition',           '#ef4444'],
+                ['Not home',             '#fb923c'],
+                ['Undecided',            '#facc15'],
+                ["Refused / won't vote", '#64748b'],
+                ['Do not knock',         '#7f1d1d'],
             ],
             party: [
-                [null, 'Not knocked', '#9ca3af'],
-                [null, 'Labour', '#e4003b'],
-                [null, 'Conservative', '#0087dc'],
-                [null, 'Lib Dem', '#faa61a'],
-                [null, 'Green', '#02a95b'],
-                [null, 'Reform', '#12b6cf'],
-                [null, 'Your Party', '#6AB023'],
-                [null, 'Not home', '#fb923c'],
-                [null, 'Undecided', '#facc15'],
-                [null, "Refused / won't vote", '#64748b'],
+                ['Not knocked',          '#9ca3af'],
+                ['Labour',               '#e4003b'],
+                ['Conservative',         '#0087dc'],
+                ['Lib Dem',              '#faa61a'],
+                ['Green',                '#02a95b'],
+                ['Reform',               '#12b6cf'],
+                ['Your Party',           '#6AB023'],
+                ['Not home',             '#fb923c'],
+                ['Undecided',            '#facc15'],
+                ["Refused / won't vote", '#64748b'],
             ],
             likelihood: [
-                [null, 'Not knocked', '#9ca3af'],
-                [null, 'No score', '#d1d5db'],
-                [null, '1 — Definite', '#15803d'],
-                [null, '2 — Likely', '#22c55e'],
-                [null, '3 — Possible', '#fbbf24'],
-                [null, '4 — Unlikely', '#fb923c'],
-                [null, '5 — Won\'t vote', '#64748b'],
-                [null, 'Do not knock', '#7f1d1d'],
+                ['Not knocked',   '#9ca3af'],
+                ['No score',      '#d1d5db'],
+                ['1 — Definite',  '#15803d'],
+                ['2 — Likely',    '#22c55e'],
+                ['3 — Possible',  '#fbbf24'],
+                ['4 — Unlikely',  '#fb923c'],
+                ["5 — Won't vote",'#64748b'],
+                ['Do not knock',  '#7f1d1d'],
             ],
         };
 
         function renderLegend(view) {
             return LEGENDS[view].map(function(item) {
-                return '<span style="white-space:nowrap">' + dot(item[2]) + item[1] + '</span>';
+                return '<span style="white-space:nowrap">' + dot(item[1]) + item[0] + '</span>';
             }).join('');
         }
 
         // ── Labels ──────────────────────────────────────────────────────────
-
-        var RESPONSE_LABELS = {
-            not_home: 'Not Home', conservative: 'Conservative', labour: 'Labour',
-            lib_dem: 'Liberal Democrat', green: 'Green Party', reform: 'Reform UK',
-            your_party: 'Your Party', undecided: 'Undecided', refused: 'Refused to Say',
-            wont_vote: "Won't Vote", other: 'Other Party',
-        };
-        var TURNOUT_LABELS = { wont: "Won't vote", might: 'Might vote', will: 'Will vote' };
 
         function esc(s) {
             return s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : '';
         }
 
         function buildPopup(a) {
-            var streetUrl = baseStreetUrl + encodeURIComponent(a.street) + '#address-' + a.id;
+            var streetUrl = streetUrlTpl.replace('__STREET__', encodeURIComponent(a.street)) + '#address-' + a.id;
             var html = '<div style="min-width:180px;font-size:0.875rem">'
                 + '<strong><a href="' + streetUrl + '" style="color:#6AB023">' + esc(a.label) + '</a></strong><br>'
                 + '<span style="color:#6b7280">' + esc(a.address) + '</span>';
@@ -249,7 +243,7 @@
                 radius: 7, fillColor: '#9ca3af',
                 color: '#fff', weight: 1.5, opacity: 1, fillOpacity: 0.9,
             });
-            marker.bindPopup(buildPopup(a));
+            marker.bindPopup(function() { return buildPopup(a); });
             marker.addTo(map);
             return marker;
         });

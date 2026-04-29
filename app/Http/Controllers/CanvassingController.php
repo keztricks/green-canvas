@@ -239,11 +239,13 @@ class CanvassingController extends Controller
         $addresses = Address::byWard($wardId)
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
-            ->with(['knockResults' => fn($q) => $q->with('user')->latest('knocked_at')])
-            ->get(['id', 'ward_id', 'house_number', 'street_name', 'town', 'postcode', 'latitude', 'longitude', 'do_not_knock']);
+            ->with(['knockResults' => fn($q) => $q
+                ->select('id', 'address_id', 'user_id', 'response', 'vote_likelihood', 'turnout_likelihood', 'notes', 'knocked_at')
+                ->with(['user' => fn($uq) => $uq->select('id', 'name')])
+                ->latest('knocked_at')])
+            ->get(['id', 'house_number', 'street_name', 'town', 'postcode', 'latitude', 'longitude', 'do_not_knock']);
 
-        $wardId = $ward->id;
-        $addressData = $addresses->map(function ($address) use ($wardId) {
+        $addressData = $addresses->map(function ($address) {
             $latest = $address->knockResults->first();
             return [
                 'id'         => $address->id,
@@ -252,7 +254,6 @@ class CanvassingController extends Controller
                 'label'      => $address->house_number . ' ' . $address->street_name,
                 'address'    => $address->full_address,
                 'street'     => $address->street_name,
-                'ward_id'    => $wardId,
                 'dnk'        => $address->do_not_knock,
                 'response'   => $latest?->response,
                 'turnout'    => $latest?->turnout_likelihood,
@@ -263,13 +264,21 @@ class CanvassingController extends Controller
             ];
         });
 
-        $totalCount    = Address::byWard($wardId)->count();
-        $geocodedCount = Address::byWard($wardId)->whereNotNull('latitude')->count();
-        $knockedCount  = Address::byWard($wardId)
-            ->whereHas('knockResults')
-            ->count();
+        $stats = DB::table('addresses')
+            ->where('ward_id', $wardId)
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw('SUM(CASE WHEN latitude IS NOT NULL THEN 1 ELSE 0 END) as geocoded')
+            ->selectRaw('SUM(CASE WHEN EXISTS(SELECT 1 FROM knock_results WHERE address_id = addresses.id) THEN 1 ELSE 0 END) as knocked')
+            ->first();
 
-        return view('canvassing.map', compact('ward', 'wards', 'addressData', 'totalCount', 'geocodedCount', 'knockedCount'));
+        $totalCount    = (int) $stats->total;
+        $geocodedCount = (int) $stats->geocoded;
+        $knockedCount  = (int) $stats->knocked;
+
+        $responseOptions = KnockResult::responseOptions();
+        $turnoutOptions  = KnockResult::turnoutLikelihoodOptions();
+
+        return view('canvassing.map', compact('ward', 'wards', 'addressData', 'totalCount', 'geocodedCount', 'knockedCount', 'responseOptions', 'turnoutOptions'));
     }
 
     public function geocode()
