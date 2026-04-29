@@ -218,9 +218,9 @@
         //    group's addresses in a Vogel sunflower spiral around the centroid
         //    so dots never overlap regardless of postcode density. ───────────
 
-        var SPIRAL_C = 0.0000338;                       // base spacing ≈ 3.75 m
+        var SPIRAL_C = 0.0000226;                        // base spacing ≈ 2.5 m
         var GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
-        var BUFFER = 0.000018;                          // ~2 m gap between groups
+        var MERGE_THRESHOLD = 0.00018;                   // ~20 m between centroids
 
         var byCoord = {};
         addresses.forEach(function (a, i) {
@@ -240,28 +240,14 @@
             return Math.sqrt(dlat * dlat + dlng * dlng);
         }
 
-        for (var pass = 0; pass < 3; pass++) {
-            var sizes = {};
-            postcodes.forEach(function (pc, i) {
-                var r = find(i);
-                sizes[r] = (sizes[r] || 0) + pc.idxs.length;
-            });
-            var changed = false;
-            for (var i = 0; i < postcodes.length; i++) {
-                for (var j = i + 1; j < postcodes.length; j++) {
-                    var ri = find(i), rj = find(j);
-                    if (ri === rj) continue;
-                    var ra = SPIRAL_C * Math.sqrt(Math.max(1, sizes[ri]));
-                    var rb = SPIRAL_C * Math.sqrt(Math.max(1, sizes[rj]));
-                    if (planarDist(postcodes[i], postcodes[j]) < ra + rb + BUFFER) {
-                        parent[ri] = rj;
-                        sizes[rj] += sizes[ri];
-                        delete sizes[ri];
-                        changed = true;
-                    }
+        for (var i = 0; i < postcodes.length; i++) {
+            for (var j = i + 1; j < postcodes.length; j++) {
+                var ri = find(i), rj = find(j);
+                if (ri === rj) continue;
+                if (planarDist(postcodes[i], postcodes[j]) < MERGE_THRESHOLD) {
+                    parent[ri] = rj;
                 }
             }
-            if (!changed) break;
         }
 
         var groups = {};
