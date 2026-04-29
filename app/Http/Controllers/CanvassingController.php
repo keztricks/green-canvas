@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\GeocodeMissingAddresses;
 use App\Models\Address;
 use App\Models\KnockResult;
 use App\Models\Ward;
@@ -262,6 +263,13 @@ class CanvassingController extends Controller
             ->count();
 
         return view('canvassing.map', compact('ward', 'wards', 'addressData', 'totalCount', 'geocodedCount', 'knockedCount'));
+    }
+
+    public function geocode()
+    {
+        GeocodeMissingAddresses::dispatch();
+
+        return redirect()->back()->with('success', 'Geocoding queued — refresh the map in a minute.');
     }
 
     public function store(Request $request)
