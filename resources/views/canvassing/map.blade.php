@@ -128,6 +128,24 @@
             return turnout ? ({ wont: "Won't vote", might: 'Might vote', will: 'Will vote' }[turnout] || turnout) : null;
         }
 
+        // Jitter addresses that share the same postcode centroid so dots don't stack
+        var byCoord = {};
+        addresses.forEach(function (a) {
+            var key = a.lat + ',' + a.lng;
+            if (!byCoord[key]) byCoord[key] = [];
+            byCoord[key].push(a);
+        });
+        var jitterRadius = 0.00013; // ~14 metres
+        Object.values(byCoord).forEach(function (group) {
+            if (group.length < 2) return;
+            var latRad = group[0].lat * Math.PI / 180;
+            group.forEach(function (a, i) {
+                var angle = (2 * Math.PI * i) / group.length;
+                a.lat += jitterRadius * Math.cos(angle);
+                a.lng += jitterRadius * Math.sin(angle) / Math.cos(latRad);
+            });
+        });
+
         var markers = [];
 
         addresses.forEach(function (a) {
