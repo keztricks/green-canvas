@@ -1,15 +1,21 @@
 #!/bin/bash
 
 # Deployment script for Green Canvas Laravel app
-# Usage: ./update.sh [branch/tag]
+# Usage: ./update.sh [branch/tag] [--copy-db]
 # Example: ./update.sh master
-#          ./update.sh v1.0.0
-#          ./update.sh develop
+#          ./update.sh feature/canvassing-map
+#          ./update.sh master --copy-db   # also copy production DB to beta
 
 set -e  # Exit on any error
 
-# Get branch/tag from first argument, default to master
+# Parse arguments
 BRANCH="${1:-master}"
+COPY_DB=false
+for arg in "$@"; do
+    if [[ "$arg" == "--copy-db" ]]; then
+        COPY_DB=true
+    fi
+done
 
 echo "🚀 Starting deployment..."
 echo "📌 Target: $BRANCH"
@@ -65,10 +71,12 @@ else
 fi
 echo "Version set to: $VERSION"
 
-# Grab the latest production database for beta environment
-if [[ "$ENVIRONMENT" == "beta" ]]; then
+# Grab the latest production database for beta environment (only if --copy-db passed)
+if [[ "$ENVIRONMENT" == "beta" && "$COPY_DB" == "true" ]]; then
     echo "📊 Syncing database from production to beta..."
     cp /var/www/vhosts/green.klkp.uk/database/database.sqlite database/database.sqlite
+elif [[ "$ENVIRONMENT" == "beta" ]]; then
+    echo "ℹ️  Skipping DB copy (pass --copy-db to sync from production)"
 fi
 
 # Backup the production database before running migrations
