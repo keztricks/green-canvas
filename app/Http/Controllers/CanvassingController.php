@@ -218,6 +218,52 @@ class CanvassingController extends Controller
         return view('canvassing.street', compact('ward', 'addresses', 'streetName', 'town', 'responseOptions', 'turnoutLikelihoodOptions', 'elections', 'selectedElectionFilters', 'selectedResponseFilters', 'selectedLikelihoodFilters'));
     }
 
+    public function map($wardId)
+    {
+        $ward = Ward::findOrFail($wardId);
+
+        if (!auth()->user()->hasAccessToWard($wardId)) {
+            abort(403, 'You do not have access to this ward.');
+        }
+
+        $user = auth()->user();
+        $wardsQuery = Ward::active()->orderBy('name');
+        if (!$user->isAdmin()) {
+            $wardsQuery->whereHas('users', function ($q) use ($user) {
+                $q->where('users.id', $user->id);
+            });
+        }
+        $wards = $wardsQuery->get();
+
+        $addresses = Address::byWard($wardId)
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->with(['knockResults' => fn($q) => $q->latest('knocked_at')])
+            ->get(['id', 'house_number', 'street_name', 'town', 'postcode', 'latitude', 'longitude', 'do_not_knock']);
+
+        $addressData = $addresses->map(function ($address) {
+            $latest = $address->knockResults->first();
+            return [
+                'id'          => $address->id,
+                'lat'         => (float) $address->latitude,
+                'lng'         => (float) $address->longitude,
+                'label'       => $address->house_number . ' ' . $address->street_name,
+                'address'     => $address->full_address,
+                'dnk'         => $address->do_not_knock,
+                'response'    => $latest?->response,
+                'turnout'     => $latest?->turnout_likelihood,
+            ];
+        });
+
+        $totalCount    = Address::byWard($wardId)->count();
+        $geocodedCount = Address::byWard($wardId)->whereNotNull('latitude')->count();
+        $knockedCount  = Address::byWard($wardId)
+            ->whereHas('knockResults')
+            ->count();
+
+        return view('canvassing.map', compact('ward', 'wards', 'addressData', 'totalCount', 'geocodedCount', 'knockedCount'));
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([

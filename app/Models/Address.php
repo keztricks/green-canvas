@@ -21,6 +21,8 @@ class Address extends Model
         'elector_count',
         'do_not_knock',
         'do_not_knock_at',
+        'latitude',
+        'longitude',
     ];
 
     protected $casts = [

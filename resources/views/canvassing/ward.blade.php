@@ -13,9 +13,14 @@
                         <h2 class="text-3xl font-bold mb-2 text-gray-800 dark:text-white">{{ $ward->name }}</h2>
                         <p class="text-gray-600 dark:text-gray-300">Select a street to begin canvassing</p>
                     </div>
-                    <a href="{{ route('canvassing.all-streets', $ward) }}" class="bg-[#6AB023] hover:bg-[#5a9620] text-white px-4 py-2 rounded whitespace-nowrap">
-                        View All Addresses
-                    </a>
+                    <div class="flex gap-2">
+                        <a href="{{ route('canvassing.map', $ward) }}" class="border border-[#6AB023] text-[#6AB023] hover:bg-green-50 dark:hover:bg-gray-700 px-4 py-2 rounded whitespace-nowrap">
+                            View Map
+                        </a>
+                        <a href="{{ route('canvassing.all-streets', $ward) }}" class="bg-[#6AB023] hover:bg-[#5a9620] text-white px-4 py-2 rounded whitespace-nowrap">
+                            View All Addresses
+                        </a>
+                    </div>
                 </div>
 
                 <!-- Election Filters -->
