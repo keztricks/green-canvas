@@ -324,7 +324,7 @@
             if (!pc) return null;
             var clean = pc.replace(/\s+/g, '').toUpperCase();
             if (clean.length < 5) return null;
-            return clean.slice(0, -3) + ' ' + clean.charAt(clean.length - 3);
+            return clean.slice(0, -3) + ' ' + clean.slice(-3, -1);
         }
 
         var sectorMap = {};
