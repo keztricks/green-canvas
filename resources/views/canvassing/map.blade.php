@@ -62,10 +62,12 @@
 
             {{-- View tabs + Legend (combined bar) --}}
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow px-4 py-3 mb-2 flex flex-col sm:flex-row sm:items-center gap-3">
-                <div class="flex gap-1 shrink-0">
-                    <button data-view="supporter" class="view-tab px-3 py-1.5 rounded text-sm font-medium transition">Supporter</button>
-                    <button data-view="party"     class="view-tab px-3 py-1.5 rounded text-sm font-medium transition">Party</button>
+                <div class="flex gap-1 shrink-0 flex-wrap">
+                    <button data-view="supporter"  class="view-tab px-3 py-1.5 rounded text-sm font-medium transition">Supporter</button>
+                    <button data-view="party"      class="view-tab px-3 py-1.5 rounded text-sm font-medium transition">Party</button>
                     <button data-view="likelihood" class="view-tab px-3 py-1.5 rounded text-sm font-medium transition">Likelihood</button>
+                    <button data-view="coverage"   class="view-tab px-3 py-1.5 rounded text-sm font-medium transition">Coverage</button>
+                    <button data-view="support"    class="view-tab px-3 py-1.5 rounded text-sm font-medium transition">Support</button>
                 </div>
                 <div id="legend" class="flex flex-wrap gap-x-3 gap-y-1.5 text-sm text-gray-600 dark:text-gray-300"></div>
             </div>
@@ -78,6 +80,7 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
+    <script src="https://unpkg.com/d3-delaunay@6.0.4/dist/d3-delaunay.min.js" crossorigin=""></script>
     <script>
     (function () {
         var addresses        = @json($addressData);
@@ -173,6 +176,21 @@
                 ['4 — Unlikely',  '#fb923c'],
                 ["5 — Won't vote",'#64748b'],
                 ['Do not knock',  '#7f1d1d'],
+            ],
+            coverage: [
+                ['0%',     '#f3f4f6'],
+                ['1–25%',  '#fde68a'],
+                ['26–50%', '#bbf7d0'],
+                ['51–75%', '#4ade80'],
+                ['76–100%','#15803d'],
+            ],
+            support: [
+                ['No data',  '#e5e7eb'],
+                ['<20%',     '#dc2626'],
+                ['20–40%',   '#f97316'],
+                ['40–60%',   '#facc15'],
+                ['60–80%',   '#86efac'],
+                ['80–100%',  '#16a34a'],
             ],
         };
 
@@ -283,6 +301,101 @@
             });
         });
 
+        // ── Per-postcode aggregates for choropleth ───────────────────────────
+
+        postcodes.forEach(function (pc) {
+            pc.postcode   = addresses[pc.idxs[0]].postcode;
+            pc.total      = pc.idxs.length;
+            pc.knocked    = 0;
+            pc.engaged    = 0;
+            pc.supporters = 0;
+            pc.idxs.forEach(function (i) {
+                var r = addresses[i].response;
+                if (!r) return;
+                pc.knocked++;
+                if (r !== 'not_home') pc.engaged++;
+                if (SUPPORTER_PARTIES.indexOf(r) !== -1) pc.supporters++;
+            });
+            pc.coverage = pc.total > 0 ? pc.knocked / pc.total : 0;
+            pc.support  = pc.engaged > 0 ? pc.supporters / pc.engaged : null;
+        });
+
+        // ── Voronoi tessellation (built lazily on first choropleth view) ─────
+
+        var voronoi = null;
+        function buildVoronoi() {
+            if (voronoi || !window.d3 || !d3.Delaunay || postcodes.length === 0) return voronoi;
+            var pts = postcodes.map(function (p) { return [p.lng, p.lat]; });
+            var pad = 0.005;
+            var minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+            postcodes.forEach(function (p) {
+                if (p.lng < minLng) minLng = p.lng;
+                if (p.lng > maxLng) maxLng = p.lng;
+                if (p.lat < minLat) minLat = p.lat;
+                if (p.lat > maxLat) maxLat = p.lat;
+            });
+            var delaunay = d3.Delaunay.from(pts);
+            voronoi = delaunay.voronoi([minLng - pad, minLat - pad, maxLng + pad, maxLat + pad]);
+            return voronoi;
+        }
+
+        function coverageColor(pc) {
+            if (pc.total === 0) return '#f3f4f6';
+            var p = pc.coverage;
+            if (p === 0)     return '#f3f4f6';
+            if (p < 0.25)    return '#fde68a';
+            if (p < 0.50)    return '#bbf7d0';
+            if (p < 0.75)    return '#4ade80';
+            return '#15803d';
+        }
+
+        function supportColor(pc) {
+            if (pc.engaged === 0) return '#e5e7eb';
+            var p = pc.support;
+            if (p < 0.20)    return '#dc2626';
+            if (p < 0.40)    return '#f97316';
+            if (p < 0.60)    return '#facc15';
+            if (p < 0.80)    return '#86efac';
+            return '#16a34a';
+        }
+
+        function buildPostcodePopup(pc) {
+            var supportPct = pc.engaged > 0 ? Math.round(pc.support * 100) + '%' : 'no data';
+            return '<div style="min-width:170px;font-size:0.875rem">'
+                + '<strong>' + esc(pc.postcode) + '</strong><br>'
+                + '<span style="color:#6b7280">' + pc.total + ' addresses</span><br><br>'
+                + 'Knocked: <strong>' + pc.knocked + '/' + pc.total + '</strong>'
+                + ' (' + Math.round(pc.coverage * 100) + '%)<br>'
+                + 'Supporters: <strong>' + pc.supporters + '</strong>'
+                + ' (' + supportPct + ' of engaged)'
+                + '</div>';
+        }
+
+        var voronoiLayer = null;
+        function showVoronoi(view) {
+            if (!buildVoronoi()) return;
+            voronoiLayer = L.layerGroup();
+            postcodes.forEach(function (pc, i) {
+                var cell = voronoi.cellPolygon(i);
+                if (!cell) return;
+                var latlngs = cell.map(function (pt) { return [pt[1], pt[0]]; });
+                var fill = view === 'coverage' ? coverageColor(pc) : supportColor(pc);
+                var poly = L.polygon(latlngs, {
+                    color: '#374151', weight: 0.6,
+                    fillColor: fill, fillOpacity: 0.55,
+                });
+                poly.bindPopup(function () { return buildPostcodePopup(pc); });
+                voronoiLayer.addLayer(poly);
+            });
+            voronoiLayer.addTo(map);
+        }
+        function hideVoronoi() {
+            if (voronoiLayer) {
+                map.removeLayer(voronoiLayer);
+                voronoiLayer = null;
+            }
+        }
+
         // ── Map + markers ────────────────────────────────────────────────────
 
         var map = L.map('map');
@@ -313,13 +426,24 @@
 
         // ── View switching ───────────────────────────────────────────────────
 
+        var CHOROPLETH_VIEWS = ['coverage', 'support'];
         var currentView = localStorage.getItem('mapView') || 'supporter';
 
         function applyView(view) {
             currentView = view;
             localStorage.setItem('mapView', view);
-            var fn = COLOR_FNS[view];
-            markers.forEach(function (m, i) { m.setStyle({ fillColor: fn(addresses[i]) }); });
+
+            if (CHOROPLETH_VIEWS.indexOf(view) !== -1) {
+                if (map.hasLayer(clusterGroup)) map.removeLayer(clusterGroup);
+                hideVoronoi();
+                showVoronoi(view);
+            } else {
+                hideVoronoi();
+                if (!map.hasLayer(clusterGroup)) map.addLayer(clusterGroup);
+                var fn = COLOR_FNS[view];
+                markers.forEach(function (m, i) { m.setStyle({ fillColor: fn(addresses[i]) }); });
+            }
+
             document.getElementById('legend').innerHTML = renderLegend(view);
             document.querySelectorAll('.view-tab').forEach(function (btn) {
                 var active = btn.dataset.view === view;
