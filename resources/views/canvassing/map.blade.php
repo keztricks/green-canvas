@@ -214,22 +214,86 @@
             return html;
         }
 
-        // ── Jitter ──────────────────────────────────────────────────────────
+        // ── Spiral layout: merge postcodes whose fans overlap, then place each
+        //    group's addresses in a Vogel sunflower spiral around the centroid
+        //    so dots never overlap regardless of postcode density. ───────────
+
+        var SPIRAL_C = 0.0000338;                       // base spacing ≈ 3.75 m
+        var GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+        var BUFFER = 0.000018;                          // ~2 m gap between groups
 
         var byCoord = {};
-        addresses.forEach(function (a) {
-            var key = a.lat + ',' + a.lng;
-            if (!byCoord[key]) byCoord[key] = [];
-            byCoord[key].push(a);
+        addresses.forEach(function (a, i) {
+            var key = a.lat.toFixed(7) + ',' + a.lng.toFixed(7);
+            if (!byCoord[key]) byCoord[key] = { lat: a.lat, lng: a.lng, idxs: [] };
+            byCoord[key].idxs.push(i);
         });
-        var jitterRadius = 0.00013;
-        Object.values(byCoord).forEach(function (group) {
-            if (group.length < 2) return;
-            var latRad = group[0].lat * Math.PI / 180;
-            group.forEach(function (a, i) {
-                var angle = (2 * Math.PI * i) / group.length;
-                a.lat += jitterRadius * Math.cos(angle);
-                a.lng += jitterRadius * Math.sin(angle) / Math.cos(latRad);
+        var postcodes = Object.values(byCoord);
+
+        var parent = postcodes.map(function (_, i) { return i; });
+        function find(i) { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; }
+
+        function planarDist(a, b) {
+            var latRad = a.lat * Math.PI / 180;
+            var dlat = a.lat - b.lat;
+            var dlng = (a.lng - b.lng) * Math.cos(latRad);
+            return Math.sqrt(dlat * dlat + dlng * dlng);
+        }
+
+        for (var pass = 0; pass < 3; pass++) {
+            var sizes = {};
+            postcodes.forEach(function (pc, i) {
+                var r = find(i);
+                sizes[r] = (sizes[r] || 0) + pc.idxs.length;
+            });
+            var changed = false;
+            for (var i = 0; i < postcodes.length; i++) {
+                for (var j = i + 1; j < postcodes.length; j++) {
+                    var ri = find(i), rj = find(j);
+                    if (ri === rj) continue;
+                    var ra = SPIRAL_C * Math.sqrt(Math.max(1, sizes[ri]));
+                    var rb = SPIRAL_C * Math.sqrt(Math.max(1, sizes[rj]));
+                    if (planarDist(postcodes[i], postcodes[j]) < ra + rb + BUFFER) {
+                        parent[ri] = rj;
+                        sizes[rj] += sizes[ri];
+                        delete sizes[ri];
+                        changed = true;
+                    }
+                }
+            }
+            if (!changed) break;
+        }
+
+        var groups = {};
+        postcodes.forEach(function (_, i) {
+            var root = find(i);
+            (groups[root] = groups[root] || []).push(i);
+        });
+
+        Object.values(groups).forEach(function (pcIdxs) {
+            var allIdxs = [], sumLat = 0, sumLng = 0;
+            pcIdxs.forEach(function (pcIdx) {
+                var pc = postcodes[pcIdx];
+                sumLat += pc.lat;
+                sumLng += pc.lng;
+                allIdxs.push.apply(allIdxs, pc.idxs);
+            });
+            var meanLat = sumLat / pcIdxs.length;
+            var meanLng = sumLng / pcIdxs.length;
+            var latRad  = meanLat * Math.PI / 180;
+            var n = allIdxs.length;
+
+            if (n === 1) {
+                addresses[allIdxs[0]].lat = meanLat;
+                addresses[allIdxs[0]].lng = meanLng;
+                return;
+            }
+
+            allIdxs.forEach(function (addrIdx, k) {
+                var r     = SPIRAL_C * Math.sqrt(k + 0.5);
+                var theta = k * GOLDEN_ANGLE;
+                addresses[addrIdx].lat = meanLat + r * Math.cos(theta);
+                addresses[addrIdx].lng = meanLng + r * Math.sin(theta) / Math.cos(latRad);
             });
         });
 
