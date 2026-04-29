@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Console\Commands\GeocodeAddresses;
+use App\Jobs\GeocodeMissingAddresses;
 use App\Models\Address;
 use App\Models\Ward;
 use Illuminate\Http\Request;
@@ -219,25 +219,7 @@ class AddressImportController extends Controller
             DB::commit();
             fclose($handle);
 
-            // Geocode any postcodes that don't already have coordinates
-            $newPostcodes = Address::where('ward_id', $request->ward_id)
-                ->whereNull('latitude')
-                ->distinct()
-                ->pluck('postcode')
-                ->filter()
-                ->values()
-                ->all();
-
-            foreach (array_chunk($newPostcodes, 100) as $batch) {
-                $results = GeocodeAddresses::lookupPostcodes($batch);
-                foreach ($results as $postcode => $coords) {
-                    if ($coords) {
-                        Address::where('postcode', $postcode)
-                            ->where('ward_id', $request->ward_id)
-                            ->update(['latitude' => $coords['lat'], 'longitude' => $coords['lng']]);
-                    }
-                }
-            }
+            GeocodeMissingAddresses::dispatch();
 
             $message = "Successfully processed " . count($addressCounts) . " unique addresses";
             if ($imported > 0) {
