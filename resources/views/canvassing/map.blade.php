@@ -1,5 +1,7 @@
 <x-app-layout>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin=""/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin=""/>
 
     <div class="py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -75,6 +77,7 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
     <script>
     (function () {
         var addresses        = @json($addressData);
@@ -238,18 +241,22 @@
             maxZoom: 19,
         }).addTo(map);
 
+        var clusterGroup = L.markerClusterGroup({ maxClusterRadius: 40, disableClusteringAtZoom: 17 });
+
         var markers = addresses.map(function (a) {
             var marker = L.circleMarker([a.lat, a.lng], {
                 radius: 7, fillColor: '#9ca3af',
                 color: '#fff', weight: 1.5, opacity: 1, fillOpacity: 0.9,
             });
             marker.bindPopup(function() { return buildPopup(a); });
-            marker.addTo(map);
+            clusterGroup.addLayer(marker);
             return marker;
         });
 
+        map.addLayer(clusterGroup);
+
         if (markers.length > 0) {
-            map.fitBounds(L.featureGroup(markers).getBounds().pad(0.1));
+            map.fitBounds(clusterGroup.getBounds().pad(0.1));
         } else {
             map.setView([53.7248, -1.8658], 13);
         }
