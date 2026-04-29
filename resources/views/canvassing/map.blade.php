@@ -80,7 +80,20 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
-    <script src="https://unpkg.com/d3-delaunay@6.0.4/dist/d3-delaunay.min.js" crossorigin=""></script>
+
+    <style>
+        .hex-label {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            color: #1f2937;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-shadow: 0 0 3px #fff, 0 0 3px #fff;
+            pointer-events: none;
+        }
+        .hex-label::before { display: none; }
+    </style>
     <script>
     (function () {
         var addresses        = @json($addressData);
@@ -353,23 +366,91 @@
             return s;
         });
 
-        // ── Voronoi tessellation (built lazily on first choropleth view) ─────
+        // ── Hex grid layout: snap each sector centroid to nearest empty hex ──
 
-        var voronoi = null;
-        function buildVoronoi() {
-            if (voronoi || !window.d3 || !d3.Delaunay || sectors.length === 0) return voronoi;
-            var pts = sectors.map(function (s) { return [s.lng, s.lat]; });
-            var pad = 0.005;
-            var minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
-            sectors.forEach(function (s) {
-                if (s.lng < minLng) minLng = s.lng;
-                if (s.lng > maxLng) maxLng = s.lng;
-                if (s.lat < minLat) minLat = s.lat;
-                if (s.lat > maxLat) maxLat = s.lat;
+        var HEX_RADIUS_M = 250;             // metres
+        var hexAssignments = null;
+
+        function buildHexGrid() {
+            if (hexAssignments || sectors.length === 0) return hexAssignments;
+
+            var refLat = sectors[0].lat, refLng = sectors[0].lng;
+            var degToM_lat = 111000;
+            var degToM_lng = 111000 * Math.cos(refLat * Math.PI / 180);
+
+            var hexW = HEX_RADIUS_M * Math.sqrt(3);    // pointy-top: width = √3·r
+            var hexH = HEX_RADIUS_M * 1.5;             //             vert spacing = 1.5·r
+
+            function hexCenter(col, row) {
+                return {
+                    x: col * hexW + (row % 2 === 0 ? 0 : hexW / 2),
+                    y: row * hexH,
+                };
+            }
+            function nearestHex(x, y) {
+                var row = Math.round(y / hexH);
+                var x0  = (row % 2 === 0 ? 0 : hexW / 2);
+                var col = Math.round((x - x0) / hexW);
+                return { col: col, row: row };
+            }
+
+            // Sort by address count desc — bigger sectors get first dibs on their ideal hex
+            var ordered = sectors.map(function (s, i) {
+                return {
+                    sectorIdx: i,
+                    x: (s.lng - refLng) * degToM_lng,
+                    y: (s.lat - refLat) * degToM_lat,
+                    weight: s.total,
+                };
+            }).sort(function (a, b) { return b.weight - a.weight; });
+
+            var taken = {};
+            var result = new Array(sectors.length);
+
+            ordered.forEach(function (p) {
+                var ideal = nearestHex(p.x, p.y);
+                var visited = {};
+                var queue = [ideal];
+                visited[ideal.col + ',' + ideal.row] = true;
+                while (queue.length > 0) {
+                    var hex = queue.shift();
+                    var key = hex.col + ',' + hex.row;
+                    if (!taken[key]) {
+                        taken[key] = p.sectorIdx;
+                        var c = hexCenter(hex.col, hex.row);
+                        result[p.sectorIdx] = {
+                            lat: c.y / degToM_lat + refLat,
+                            lng: c.x / degToM_lng + refLng,
+                        };
+                        return;
+                    }
+                    var dirs = hex.row % 2 === 0
+                        ? [[-1, 0], [1, 0], [-1, -1], [0, -1], [-1, 1], [0, 1]]
+                        : [[-1, 0], [1, 0], [0, -1], [1, -1], [0, 1], [1, 1]];
+                    for (var k = 0; k < 6; k++) {
+                        var n = { col: hex.col + dirs[k][0], row: hex.row + dirs[k][1] };
+                        var nKey = n.col + ',' + n.row;
+                        if (!visited[nKey]) { visited[nKey] = true; queue.push(n); }
+                    }
+                }
             });
-            var delaunay = d3.Delaunay.from(pts);
-            voronoi = delaunay.voronoi([minLng - pad, minLat - pad, maxLng + pad, maxLat + pad]);
-            return voronoi;
+
+            hexAssignments = result;
+            return hexAssignments;
+        }
+
+        function hexagonLatLngs(centerLat, centerLng, radiusM) {
+            var latRad = centerLat * Math.PI / 180;
+            var degToM_lat = 111000;
+            var degToM_lng = 111000 * Math.cos(latRad);
+            var pts = [];
+            for (var k = 0; k < 6; k++) {
+                var angle = Math.PI / 3 * k + Math.PI / 6;
+                var dx = Math.cos(angle) * radiusM;
+                var dy = Math.sin(angle) * radiusM;
+                pts.push([centerLat + dy / degToM_lat, centerLng + dx / degToM_lng]);
+            }
+            return pts;
         }
 
         function coverageColor(s) {
@@ -404,38 +485,40 @@
                 + '</div>';
         }
 
-        var voronoiLayer = null;
-        function showVoronoi(view) {
-            if (!buildVoronoi()) return;
-            voronoiLayer = L.layerGroup();
+        var hexLayer = null;
+        function showHexGrid(view) {
+            var pos = buildHexGrid();
+            if (!pos) return;
+            hexLayer = L.layerGroup();
             sectors.forEach(function (sec, i) {
-                var cell = voronoi.cellPolygon(i);
-                if (!cell) return;
-                var latlngs = cell.map(function (pt) { return [pt[1], pt[0]]; });
+                var p = pos[i];
+                if (!p) return;
                 var fill = view === 'coverage' ? coverageColor(sec) : supportColor(sec);
-                var poly = L.polygon(latlngs, {
-                    color: '#374151', weight: 0.6,
-                    fillColor: fill, fillOpacity: 0.55,
+                var hex = L.polygon(hexagonLatLngs(p.lat, p.lng, HEX_RADIUS_M * 0.95), {
+                    color: '#374151', weight: 0.8,
+                    fillColor: fill, fillOpacity: 0.85,
                 });
-                poly.bindPopup(function () { return buildSectorPopup(sec); });
-                voronoiLayer.addLayer(poly);
+                hex.bindPopup(function () { return buildSectorPopup(sec); });
+                hex.bindTooltip(sec.sector, { direction: 'center', permanent: true, className: 'hex-label' });
+                hexLayer.addLayer(hex);
             });
-            voronoiLayer.addTo(map);
+            hexLayer.addTo(map);
         }
-        function hideVoronoi() {
-            if (voronoiLayer) {
-                map.removeLayer(voronoiLayer);
-                voronoiLayer = null;
+        function hideHexGrid() {
+            if (hexLayer) {
+                map.removeLayer(hexLayer);
+                hexLayer = null;
             }
         }
 
         // ── Map + markers ────────────────────────────────────────────────────
 
         var map = L.map('map');
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        var tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
             maxZoom: 19,
-        }).addTo(map);
+        });
+        tileLayer.addTo(map);
 
         var clusterGroup = L.markerClusterGroup({ maxClusterRadius: 40, disableClusteringAtZoom: 15 });
 
@@ -468,10 +551,13 @@
 
             if (CHOROPLETH_VIEWS.indexOf(view) !== -1) {
                 if (map.hasLayer(clusterGroup)) map.removeLayer(clusterGroup);
-                hideVoronoi();
-                showVoronoi(view);
+                if (map.hasLayer(tileLayer))   map.removeLayer(tileLayer);
+                hideHexGrid();
+                showHexGrid(view);
+                if (hexLayer) map.fitBounds(hexLayer.getBounds().pad(0.05));
             } else {
-                hideVoronoi();
+                hideHexGrid();
+                if (!map.hasLayer(tileLayer))   tileLayer.addTo(map);
                 if (!map.hasLayer(clusterGroup)) map.addLayer(clusterGroup);
                 var fn = COLOR_FNS[view];
                 markers.forEach(function (m, i) { m.setStyle({ fillColor: fn(addresses[i]) }); });
