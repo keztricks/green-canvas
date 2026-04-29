@@ -13,7 +13,6 @@
                     <h2 class="text-2xl font-bold text-gray-800 dark:text-white mt-1">{{ $ward->name }} — Map</h2>
                 </div>
 
-                {{-- Ward switcher --}}
                 @if($wards->count() > 1)
                 <div class="flex items-center gap-2">
                     <label for="wardSelect" class="text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">Switch ward:</label>
@@ -29,7 +28,7 @@
                 @endif
             </div>
 
-            {{-- Stats bar --}}
+            {{-- Stats --}}
             <div class="grid grid-cols-3 gap-3 mb-4">
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow px-4 py-3 text-center">
                     <p class="text-2xl font-bold text-gray-800 dark:text-white">{{ $totalCount }}</p>
@@ -59,20 +58,18 @@
             </div>
             @endif
 
-            {{-- Legend --}}
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow px-4 py-3 mb-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
-                <span class="font-medium text-gray-600 dark:text-gray-300 mr-1">Legend:</span>
-                <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-full bg-gray-400"></span>Not knocked</span>
-                <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-full bg-green-500"></span>Supporter</span>
-                <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-full bg-red-500"></span>Opposition</span>
-                <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-full bg-orange-400"></span>Not home</span>
-                <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-full bg-yellow-400"></span>Undecided</span>
-                <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-full bg-slate-500"></span>Refused / won't vote</span>
-                <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3 rounded-full bg-red-900"></span>Do not knock</span>
+            {{-- View tabs + Legend (combined bar) --}}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow px-4 py-3 mb-2 flex flex-col sm:flex-row sm:items-center gap-3">
+                <div class="flex gap-1 shrink-0">
+                    <button data-view="supporter" class="view-tab px-3 py-1.5 rounded text-sm font-medium transition">Supporter</button>
+                    <button data-view="party"     class="view-tab px-3 py-1.5 rounded text-sm font-medium transition">Party</button>
+                    <button data-view="likelihood" class="view-tab px-3 py-1.5 rounded text-sm font-medium transition">Likelihood</button>
+                </div>
+                <div id="legend" class="flex flex-wrap gap-x-3 gap-y-1.5 text-sm text-gray-600 dark:text-gray-300"></div>
             </div>
 
             {{-- Map --}}
-            <div id="map" class="rounded-lg shadow" style="height: calc(100vh - 320px); min-height: 400px;"></div>
+            <div id="map" class="rounded-lg shadow" style="height: calc(100vh - 340px); min-height: 400px;"></div>
 
         </div>
     </div>
@@ -80,62 +77,155 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script>
     (function () {
-        var addresses = @json($addressData);
+        var addresses   = @json($addressData);
+        var baseStreetUrl = '{{ url('/ward/' . $ward->id . '/street/') }}/';
 
-        var map = L.map('map');
+        // ── Colour schemes ──────────────────────────────────────────────────
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            maxZoom: 19,
-        }).addTo(map);
+        var SUPPORTER_PARTIES = ['labour', 'green', 'lib_dem', 'your_party'];
+        var OPPOSITION_PARTIES = ['conservative', 'reform'];
 
-        function dotColor(address) {
-            if (address.dnk) return '#7f1d1d';
-            switch (address.response) {
-                case 'labour':
-                case 'green':
-                case 'lib_dem':
-                case 'your_party':  return '#22c55e';
-                case 'conservative':
-                case 'reform':      return '#ef4444';
-                case 'not_home':    return '#fb923c';
-                case 'undecided':   return '#facc15';
+        function colorSupporter(a) {
+            if (a.dnk) return '#7f1d1d';
+            var isSupporter = SUPPORTER_PARTIES.includes(a.response);
+            if (isSupporter && (a.likelihood === 1 || a.likelihood === 2)) return '#16a34a'; // strong – bright green
+            if (isSupporter) return '#86efac';                                                // weaker supporter – pale green
+            if (OPPOSITION_PARTIES.includes(a.response)) return '#ef4444';
+            switch (a.response) {
+                case 'not_home':  return '#fb923c';
+                case 'undecided': return '#facc15';
                 case 'refused':
-                case 'wont_vote':   return '#64748b';
-                case 'other':       return '#0d9488';
-                default:            return '#9ca3af'; // not knocked
+                case 'wont_vote': return '#64748b';
+                case 'other':     return '#0d9488';
+                default:          return '#9ca3af'; // not knocked
             }
         }
 
-        function responseLabel(response) {
-            var labels = {
-                not_home:     'Not Home',
-                conservative: 'Conservative',
-                labour:       'Labour',
-                lib_dem:      'Liberal Democrat',
-                green:        'Green Party',
-                reform:       'Reform UK',
-                your_party:   'Your Party',
-                undecided:    'Undecided',
-                refused:      'Refused to Say',
-                wont_vote:    "Won't Vote",
-                other:        'Other Party',
-            };
-            return response ? (labels[response] || response) : 'Not yet knocked';
+        function colorParty(a) {
+            if (a.dnk) return '#7f1d1d';
+            switch (a.response) {
+                case 'labour':       return '#e4003b';
+                case 'conservative': return '#0087dc';
+                case 'lib_dem':      return '#faa61a';
+                case 'green':        return '#02a95b';
+                case 'reform':       return '#12b6cf';
+                case 'your_party':   return '#6AB023';
+                case 'not_home':     return '#fb923c';
+                case 'undecided':    return '#facc15';
+                case 'refused':
+                case 'wont_vote':    return '#64748b';
+                case 'other':        return '#0d9488';
+                default:             return '#9ca3af';
+            }
         }
 
-        function turnoutLabel(turnout) {
-            return turnout ? ({ wont: "Won't vote", might: 'Might vote', will: 'Will vote' }[turnout] || turnout) : null;
+        // vote_likelihood 1 = strongest, 5 = weakest
+        var LIKELIHOOD_COLORS = ['#15803d', '#22c55e', '#fbbf24', '#fb923c', '#64748b'];
+        function colorLikelihood(a) {
+            if (a.dnk) return '#7f1d1d';
+            if (!a.response) return '#9ca3af';       // not knocked
+            if (!a.likelihood) return '#d1d5db';     // knocked, no score
+            return LIKELIHOOD_COLORS[(a.likelihood - 1)] || '#9ca3af';
         }
 
-        // Jitter addresses that share the same postcode centroid so dots don't stack
+        var COLOR_FNS = { supporter: colorSupporter, party: colorParty, likelihood: colorLikelihood };
+
+        // ── Legends ─────────────────────────────────────────────────────────
+
+        function dot(color) {
+            return '<span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:' + color + ';vertical-align:middle;margin-right:4px"></span>';
+        }
+
+        var LEGENDS = {
+            supporter: [
+                [null, 'Not knocked', '#9ca3af'],
+                [null, 'Strong supporter (1–2)', '#16a34a'],
+                [null, 'Supporter', '#86efac'],
+                [null, 'Opposition', '#ef4444'],
+                [null, 'Not home', '#fb923c'],
+                [null, 'Undecided', '#facc15'],
+                [null, "Refused / won't vote", '#64748b'],
+                [null, 'Do not knock', '#7f1d1d'],
+            ],
+            party: [
+                [null, 'Not knocked', '#9ca3af'],
+                [null, 'Labour', '#e4003b'],
+                [null, 'Conservative', '#0087dc'],
+                [null, 'Lib Dem', '#faa61a'],
+                [null, 'Green', '#02a95b'],
+                [null, 'Reform', '#12b6cf'],
+                [null, 'Your Party', '#6AB023'],
+                [null, 'Not home', '#fb923c'],
+                [null, 'Undecided', '#facc15'],
+                [null, "Refused / won't vote", '#64748b'],
+            ],
+            likelihood: [
+                [null, 'Not knocked', '#9ca3af'],
+                [null, 'No score', '#d1d5db'],
+                [null, '1 — Definite', '#15803d'],
+                [null, '2 — Likely', '#22c55e'],
+                [null, '3 — Possible', '#fbbf24'],
+                [null, '4 — Unlikely', '#fb923c'],
+                [null, '5 — Won\'t vote', '#64748b'],
+                [null, 'Do not knock', '#7f1d1d'],
+            ],
+        };
+
+        function renderLegend(view) {
+            return LEGENDS[view].map(function(item) {
+                return '<span style="white-space:nowrap">' + dot(item[2]) + item[1] + '</span>';
+            }).join('');
+        }
+
+        // ── Labels ──────────────────────────────────────────────────────────
+
+        var RESPONSE_LABELS = {
+            not_home: 'Not Home', conservative: 'Conservative', labour: 'Labour',
+            lib_dem: 'Liberal Democrat', green: 'Green Party', reform: 'Reform UK',
+            your_party: 'Your Party', undecided: 'Undecided', refused: 'Refused to Say',
+            wont_vote: "Won't Vote", other: 'Other Party',
+        };
+        var TURNOUT_LABELS = { wont: "Won't vote", might: 'Might vote', will: 'Will vote' };
+
+        function esc(s) {
+            return s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : '';
+        }
+
+        function buildPopup(a) {
+            var streetUrl = baseStreetUrl + encodeURIComponent(a.street) + '#address-' + a.id;
+            var html = '<div style="min-width:180px;font-size:0.875rem">'
+                + '<strong><a href="' + streetUrl + '" style="color:#6AB023">' + esc(a.label) + '</a></strong><br>'
+                + '<span style="color:#6b7280">' + esc(a.address) + '</span>';
+
+            if (a.response) {
+                html += '<hr style="margin:6px 0;border-color:#e5e7eb">'
+                    + '<strong>' + esc(RESPONSE_LABELS[a.response] || a.response) + '</strong>';
+                if (a.likelihood) html += ' &nbsp;<span style="color:#6b7280">Likelihood: ' + a.likelihood + '/5</span>';
+                if (a.turnout)    html += '<br><span style="color:#6b7280">' + esc(TURNOUT_LABELS[a.turnout] || a.turnout) + '</span>';
+                if (a.notes)      html += '<br><em style="color:#374151">' + esc(a.notes) + '</em>';
+                html += '<hr style="margin:6px 0;border-color:#e5e7eb">'
+                    + '<span style="color:#6b7280;font-size:0.8em">';
+                if (a.canvasser)  html += 'By ' + esc(a.canvasser);
+                if (a.knocked_at) html += (a.canvasser ? ' · ' : '') + esc(a.knocked_at);
+                html += '</span>';
+            } else {
+                html += '<br><span style="color:#9ca3af">Not yet knocked</span>';
+            }
+
+            if (a.dnk) html += '<br><span style="color:#b91c1c;font-size:0.8em">⚠ Do not knock</span>';
+            html += '</div>';
+            return html;
+        }
+
+        // ── Jitter ──────────────────────────────────────────────────────────
+
         var byCoord = {};
         addresses.forEach(function (a) {
             var key = a.lat + ',' + a.lng;
             if (!byCoord[key]) byCoord[key] = [];
             byCoord[key].push(a);
         });
-        var jitterRadius = 0.00013; // ~14 metres
+        var jitterRadius = 0.00013;
         Object.values(byCoord).forEach(function (group) {
             if (group.length < 2) return;
             var latRad = group[0].lat * Math.PI / 180;
@@ -146,40 +236,52 @@
             });
         });
 
-        var markers = [];
+        // ── Map + markers ────────────────────────────────────────────────────
 
-        addresses.forEach(function (a) {
-            var color = dotColor(a);
+        var map = L.map('map');
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19,
+        }).addTo(map);
+
+        var markers = addresses.map(function (a) {
             var marker = L.circleMarker([a.lat, a.lng], {
-                radius: 7,
-                fillColor: color,
-                color: '#fff',
-                weight: 1.5,
-                opacity: 1,
-                fillOpacity: 0.9,
+                radius: 7, fillColor: '#9ca3af',
+                color: '#fff', weight: 1.5, opacity: 1, fillOpacity: 0.9,
             });
-
-            var turnout = turnoutLabel(a.turnout);
-            var popup = '<div style="min-width:160px">'
-                + '<strong>' + a.label + '</strong><br>'
-                + '<span style="color:#6b7280;font-size:0.85em">' + a.address + '</span><br><br>'
-                + '<span style="font-weight:600">' + responseLabel(a.response) + '</span>'
-                + (turnout ? '<br><span style="font-size:0.85em">' + turnout + '</span>' : '')
-                + (a.dnk ? '<br><span style="color:#b91c1c;font-size:0.85em">⚠ Do not knock</span>' : '')
-                + '</div>';
-
-            marker.bindPopup(popup);
+            marker.bindPopup(buildPopup(a));
             marker.addTo(map);
-            markers.push(marker);
+            return marker;
         });
 
         if (markers.length > 0) {
-            var group = L.featureGroup(markers);
-            map.fitBounds(group.getBounds().pad(0.1));
+            map.fitBounds(L.featureGroup(markers).getBounds().pad(0.1));
         } else {
-            // Default to Halifax if no geocoded addresses
             map.setView([53.7248, -1.8658], 13);
         }
+
+        // ── View switching ───────────────────────────────────────────────────
+
+        var currentView = localStorage.getItem('mapView') || 'supporter';
+
+        function applyView(view) {
+            currentView = view;
+            localStorage.setItem('mapView', view);
+            var fn = COLOR_FNS[view];
+            markers.forEach(function (m, i) { m.setStyle({ fillColor: fn(addresses[i]) }); });
+            document.getElementById('legend').innerHTML = renderLegend(view);
+            document.querySelectorAll('.view-tab').forEach(function (btn) {
+                var active = btn.dataset.view === view;
+                btn.className = 'view-tab px-3 py-1.5 rounded text-sm font-medium transition '
+                    + (active ? 'bg-[#6AB023] text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700');
+            });
+        }
+
+        document.querySelectorAll('.view-tab').forEach(function (btn) {
+            btn.addEventListener('click', function () { applyView(btn.dataset.view); });
+        });
+
+        applyView(currentView);
     })();
     </script>
 

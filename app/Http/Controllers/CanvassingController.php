@@ -239,20 +239,27 @@ class CanvassingController extends Controller
         $addresses = Address::byWard($wardId)
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
-            ->with(['knockResults' => fn($q) => $q->latest('knocked_at')])
-            ->get(['id', 'house_number', 'street_name', 'town', 'postcode', 'latitude', 'longitude', 'do_not_knock']);
+            ->with(['knockResults' => fn($q) => $q->with('user')->latest('knocked_at')])
+            ->get(['id', 'ward_id', 'house_number', 'street_name', 'town', 'postcode', 'latitude', 'longitude', 'do_not_knock']);
 
-        $addressData = $addresses->map(function ($address) {
+        $wardId = $ward->id;
+        $addressData = $addresses->map(function ($address) use ($wardId) {
             $latest = $address->knockResults->first();
             return [
-                'id'          => $address->id,
-                'lat'         => (float) $address->latitude,
-                'lng'         => (float) $address->longitude,
-                'label'       => $address->house_number . ' ' . $address->street_name,
-                'address'     => $address->full_address,
-                'dnk'         => $address->do_not_knock,
-                'response'    => $latest?->response,
-                'turnout'     => $latest?->turnout_likelihood,
+                'id'         => $address->id,
+                'lat'        => (float) $address->latitude,
+                'lng'        => (float) $address->longitude,
+                'label'      => $address->house_number . ' ' . $address->street_name,
+                'address'    => $address->full_address,
+                'street'     => $address->street_name,
+                'ward_id'    => $wardId,
+                'dnk'        => $address->do_not_knock,
+                'response'   => $latest?->response,
+                'turnout'    => $latest?->turnout_likelihood,
+                'likelihood' => $latest?->vote_likelihood,
+                'notes'      => $latest?->notes,
+                'canvasser'  => $latest?->user?->name,
+                'knocked_at' => $latest?->knocked_at?->format('d M Y H:i'),
             ];
         });
 
