@@ -34,9 +34,12 @@ fi
 # Create SQLite file if it doesn't exist (first run or no Litestream)
 if [ ! -f "$APP_DIR/database/database.sqlite" ]; then
     touch "$APP_DIR/database/database.sqlite"
-    chown www-data:www-data "$APP_DIR/database/database.sqlite"
-    chmod 664 "$APP_DIR/database/database.sqlite"
 fi
+
+# Fix ownership/perms unconditionally — litestream restore writes the file as
+# root, but php-fpm runs as www-data and would fail to open it.
+chown www-data:www-data "$APP_DIR/database/database.sqlite"
+chmod 664 "$APP_DIR/database/database.sqlite"
 
 # Run migrations
 echo "[entrypoint] Running migrations..."
