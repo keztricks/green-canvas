@@ -1264,11 +1264,36 @@
             if (idx !== -1) {
                 var focusMarker = markers[idx];
                 var focusAddress = addresses[idx];
+
+                // Visually distinguish the focused marker so it's identifiable
+                // behind the slide-up sheet and after the sheet is dismissed.
+                focusMarker.setStyle({
+                    radius: 11,
+                    weight: 4,
+                    color: '#facc15',  // gold outline
+                    fillOpacity: 1,
+                });
+                focusMarker.bringToFront && focusMarker.bringToFront();
+
+                // Pan the map so the dot is in the top portion of the visible
+                // viewport rather than dead-centre (where the sheet covers it).
                 map.setView(focusMarker.getLatLng(), 18);
-                if (typeof clusterGroup.zoomToShowLayer === 'function') {
-                    clusterGroup.zoomToShowLayer(focusMarker, function () { openSheet(focusAddress, focusMarker); });
-                } else {
+                var openAndOffset = function () {
                     openSheet(focusAddress, focusMarker);
+                    // After sheet animation, slide the map down so the dot is
+                    // visible above the sheet header.
+                    setTimeout(function () {
+                        var sheetTop = document.getElementById('recordSheetPanel');
+                        if (sheetTop) {
+                            var sheetH = sheetTop.getBoundingClientRect().height;
+                            map.panBy([0, -Math.min(sheetH * 0.45, 250)], { animate: true });
+                        }
+                    }, 250);
+                };
+                if (typeof clusterGroup.zoomToShowLayer === 'function') {
+                    clusterGroup.zoomToShowLayer(focusMarker, openAndOffset);
+                } else {
+                    openAndOffset();
                 }
             }
         }
