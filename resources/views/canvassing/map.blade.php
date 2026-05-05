@@ -3,80 +3,138 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin=""/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin=""/>
 
-    <div class="py-6">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    {{-- Map page: flex column filling viewport below the app navbar (h-16). --}}
+    <div class="flex flex-col" style="height: calc(100dvh - 4rem);">
 
-            {{-- Header --}}
-            <div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                    <a href="{{ route('canvassing.ward', $ward) }}" class="text-[#6AB023] hover:text-[#5a9620] text-sm">
-                        ← Back to {{ $ward->name }}
-                    </a>
-                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mt-1">{{ $ward->name }} — Map</h2>
-                </div>
-
-                @if($wards->count() > 1)
-                <div class="flex items-center gap-2">
-                    <label for="wardSelect" class="text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">Switch ward:</label>
-                    <select id="wardSelect"
-                            class="text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#6AB023]">
-                        @foreach($wards as $w)
-                            <option value="{{ route('canvassing.map', $w) }}" {{ $w->id === $ward->id ? 'selected' : '' }}>
-                                {{ $w->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                @endif
+        {{-- Compact header row --}}
+        <div class="flex-shrink-0 px-3 sm:px-6 pt-3 pb-2 flex items-center gap-2">
+            <a href="{{ route('canvassing.ward', $ward) }}"
+               class="shrink-0 text-[#6AB023] hover:bg-green-50 dark:hover:bg-gray-700 rounded-full w-9 h-9 flex items-center justify-center text-lg"
+               aria-label="Back">
+                ←
+            </a>
+            <div class="min-w-0 flex-1">
+                <h1 class="text-base sm:text-2xl font-semibold text-gray-800 dark:text-white truncate">
+                    {{ $ward->name }} <span class="hidden sm:inline text-gray-400 font-normal">— Map</span>
+                </h1>
             </div>
-
-            {{-- Stats --}}
-            <div class="grid grid-cols-3 gap-3 mb-4">
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow px-4 py-3 text-center">
-                    <p class="text-2xl font-bold text-gray-800 dark:text-white">{{ $totalCount }}</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Total addresses</p>
-                </div>
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow px-4 py-3 text-center">
-                    <p class="text-2xl font-bold text-[#6AB023]">{{ $knockedCount }}</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Knocked</p>
-                </div>
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow px-4 py-3 text-center">
-                    <p class="text-2xl font-bold text-gray-400">{{ $totalCount - $knockedCount }}</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Still to do</p>
-                </div>
-            </div>
-
-            @if($geocodedCount < $totalCount)
-            <div class="mb-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg px-4 py-3 text-sm text-amber-700 dark:text-amber-300 flex items-center justify-between gap-4">
-                <span>{{ $totalCount - $geocodedCount }} address{{ ($totalCount - $geocodedCount) === 1 ? '' : 'es' }} couldn't be placed on the map (missing postcode coordinates).</span>
-                @if(auth()->user()->isAdmin())
-                <form method="POST" action="{{ route('canvassing.geocode') }}">
-                    @csrf
-                    <button type="submit" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium px-3 py-1.5 rounded whitespace-nowrap">
-                        Geocode now
-                    </button>
-                </form>
-                @endif
-            </div>
+            @if($wards->count() > 1)
+                <select id="wardSelect"
+                        class="shrink-0 max-w-[40vw] sm:max-w-none text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#6AB023]"
+                        aria-label="Switch ward">
+                    @foreach($wards as $w)
+                        <option value="{{ route('canvassing.map', $w) }}" {{ $w->id === $ward->id ? 'selected' : '' }}>
+                            {{ $w->name }}
+                        </option>
+                    @endforeach
+                </select>
             @endif
+        </div>
 
-            {{-- View tabs + Legend (combined bar) --}}
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow px-4 py-3 mb-2 flex flex-col sm:flex-row sm:items-center gap-3">
-                <div class="flex gap-1 shrink-0 flex-wrap">
-                    <button data-view="supporter"  class="view-tab px-3 py-1.5 rounded text-sm font-medium transition">Supporter</button>
-                    <button data-view="party"      class="view-tab px-3 py-1.5 rounded text-sm font-medium transition">Party</button>
-                    <button data-view="likelihood" class="view-tab px-3 py-1.5 rounded text-sm font-medium transition">Likelihood</button>
-                    <button data-view="coverage"   class="view-tab px-3 py-1.5 rounded text-sm font-medium transition">Coverage</button>
-                    <button data-view="support"    class="view-tab px-3 py-1.5 rounded text-sm font-medium transition">Support</button>
+        {{-- Stats: hidden on mobile, compact strip on desktop --}}
+        <div class="hidden sm:grid flex-shrink-0 grid-cols-3 gap-3 px-6 pb-2">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow px-4 py-2 text-center">
+                <p class="text-xl font-bold text-gray-800 dark:text-white">{{ $totalCount }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Total addresses</p>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow px-4 py-2 text-center">
+                <p class="text-xl font-bold text-[#6AB023]">{{ $knockedCount }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Knocked</p>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow px-4 py-2 text-center">
+                <p class="text-xl font-bold text-gray-400">{{ $totalCount - $knockedCount }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Still to do</p>
+            </div>
+        </div>
+
+
+        {{-- View picker + legend toggle --}}
+        <div class="flex-shrink-0 px-3 sm:px-6 pb-2 flex items-center gap-2">
+            {{-- Mobile: dropdown --}}
+            <select id="viewSelect"
+                    class="sm:hidden flex-1 min-w-0 bg-white dark:bg-gray-800 shadow rounded-lg px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#6AB023]"
+                    aria-label="Map view">
+                <option value="supporter">Supporter</option>
+                <option value="party">Party</option>
+                <option value="likelihood">Likelihood</option>
+                <option value="coverage">Coverage</option>
+                <option value="support">Support</option>
+            </select>
+
+            {{-- Desktop: tab buttons --}}
+            <div class="hidden sm:block flex-1 min-w-0 overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow">
+                <div class="flex gap-1 p-1 w-max">
+                    <button data-view="supporter"  class="view-tab px-3 py-1.5 rounded text-sm font-medium transition whitespace-nowrap">Supporter</button>
+                    <button data-view="party"      class="view-tab px-3 py-1.5 rounded text-sm font-medium transition whitespace-nowrap">Party</button>
+                    <button data-view="likelihood" class="view-tab px-3 py-1.5 rounded text-sm font-medium transition whitespace-nowrap">Likelihood</button>
+                    <button data-view="coverage"   class="view-tab px-3 py-1.5 rounded text-sm font-medium transition whitespace-nowrap">Coverage</button>
+                    <button data-view="support"    class="view-tab px-3 py-1.5 rounded text-sm font-medium transition whitespace-nowrap">Support</button>
                 </div>
-                <div id="legend" class="flex flex-wrap gap-x-3 gap-y-1.5 text-sm text-gray-600 dark:text-gray-300"></div>
             </div>
 
-            {{-- Map --}}
-            <div id="map" class="rounded-lg shadow" style="height: calc(100vh - 340px); min-height: 400px;"></div>
+            <button type="button" id="legendToggle"
+                    class="shrink-0 bg-white dark:bg-gray-800 shadow rounded-lg w-9 h-9 flex items-center justify-center text-gray-600 dark:text-gray-300"
+                    aria-label="Toggle legend" aria-expanded="false">
+                <span aria-hidden="true">i</span>
+            </button>
+        </div>
 
+        {{-- Legend (collapsible) --}}
+        <div id="legendBox" class="hidden flex-shrink-0 mx-3 sm:mx-6 mb-2 bg-white dark:bg-gray-800 rounded-lg shadow px-3 py-2">
+            <div id="legend" class="flex flex-wrap gap-x-3 gap-y-1.5 text-sm text-gray-600 dark:text-gray-300"></div>
+        </div>
+
+        {{-- Map (fills remaining height, edge-to-edge on mobile) --}}
+        <div class="flex-1 min-h-0 mx-0 sm:mx-6 sm:rounded-lg shadow relative">
+            <div id="map" class="absolute inset-0 sm:rounded-lg"></div>
+            @if($canEditPositions && $missingAddresses->count() > 0)
+                <button type="button" id="missingBtn"
+                        class="absolute bottom-20 right-4 z-[800] bg-white dark:bg-gray-800 shadow-lg rounded-full w-12 h-12 flex items-center justify-center text-gray-700 dark:text-gray-200 hover:text-[#6AB023]"
+                        aria-label="Place missing addresses">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                        <line x1="9" y1="10" x2="15" y2="10"/>
+                    </svg>
+                    <span class="absolute -top-1 -right-1 bg-amber-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center">{{ $missingAddresses->count() }}</span>
+                </button>
+            @endif
+            <button type="button" id="locateBtn"
+                    class="absolute bottom-4 right-4 z-[800] bg-white dark:bg-gray-800 shadow-lg rounded-full w-12 h-12 flex items-center justify-center text-gray-700 dark:text-gray-200 hover:text-[#6AB023] active:bg-gray-100 dark:active:bg-gray-700"
+                    aria-label="Show my location" aria-pressed="false">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="3"/>
+                    <line x1="12" y1="2" x2="12" y2="6"/>
+                    <line x1="12" y1="18" x2="12" y2="22"/>
+                    <line x1="2" y1="12" x2="6" y2="12"/>
+                    <line x1="18" y1="12" x2="22" y2="12"/>
+                </svg>
+            </button>
+        </div>
+
+    </div>
+
+    @if($canEditPositions)
+    {{-- Missing addresses sheet (admin / ward-admin only) --}}
+    <div id="missingSheet" class="hidden fixed inset-0 z-[2000]">
+        <div class="absolute inset-0 bg-black/50" id="missingBackdrop"></div>
+        <div id="missingPanel"
+             class="absolute bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-2xl shadow-2xl max-h-[85vh] overflow-y-auto transform transition-transform duration-200 translate-y-full">
+            <div class="p-4 sm:p-5 max-w-2xl mx-auto">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-800 dark:text-white">Missing addresses</h2>
+                        <p class="text-sm text-gray-500" id="missingCount"></p>
+                    </div>
+                    <button type="button" id="missingClose" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-3xl leading-none px-2" aria-label="Close">×</button>
+                </div>
+                <p class="text-xs text-gray-500 mb-3">
+                    Pick an address, then tap the map where the house actually is.
+                </p>
+                <div id="missingList" class="space-y-1.5"></div>
+            </div>
         </div>
     </div>
+    @endif
 
     {{-- Slide-up sheet (replaces the Leaflet popup) --}}
     <div id="recordSheet" class="hidden fixed inset-0 z-[2000]">
@@ -171,6 +229,26 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
 
     <style>
+        .leaflet-control-attribution {
+            max-width: calc(100% - 80px);
+            font-size: 0.7rem;
+            opacity: 0.85;
+        }
+        .you-are-here {
+            width: 18px;
+            height: 18px;
+            background: #2563eb;
+            border: 3px solid #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7);
+            animation: youAreHerePulse 2s infinite;
+        }
+        @keyframes youAreHerePulse {
+            0%   { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.6); }
+            70%  { box-shadow: 0 0 0 18px rgba(37, 99, 235, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+        }
+        #locateBtn.is-active { color: #6AB023; }
         .hex-label {
             background: transparent;
             border: none;
@@ -186,6 +264,7 @@
     <script>
     (function () {
         var addresses        = @json($addressData);
+        var missingAddresses = @json($missingAddresses ?? []);
         var streetUrlTpl     = '{{ route('canvassing.street', ['ward' => $ward->id, 'streetName' => '__STREET__']) }}';
         var RESPONSE_LABELS  = @json($responseOptions);
         var TURNOUT_LABELS   = @json($turnoutOptions);
@@ -534,7 +613,11 @@
 
         // ── Map + markers ────────────────────────────────────────────────────
 
-        var map = L.map('map');
+        var map = L.map('map', { zoomControl: false });
+        // Move zoom + attribution out of the bottom-right corner where they
+        // collide with our locate / missing-addresses buttons.
+        L.control.zoom({ position: 'topright' }).addTo(map);
+        map.attributionControl.setPosition('topleft');
         var tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · '
                 + 'Contains OS data © Crown copyright and database right · '
@@ -543,14 +626,19 @@
         });
         tileLayer.addTo(map);
 
-        var clusterGroup = L.markerClusterGroup({ maxClusterRadius: 40, disableClusteringAtZoom: 15 });
+        var clusterGroup = L.markerClusterGroup({ maxClusterRadius: 40, disableClusteringAtZoom: 1 });
 
-        var markers = addresses.map(function (a) {
+        function buildMarker(a) {
             var marker = L.circleMarker([a.lat, a.lng], {
                 radius: 7, fillColor: '#9ca3af',
                 color: '#fff', weight: 1.5, opacity: 1, fillOpacity: 0.9,
             });
             marker.on('click', function () { openSheet(a, marker); });
+            return marker;
+        }
+
+        var markers = addresses.map(function (a) {
+            var marker = buildMarker(a);
             clusterGroup.addLayer(marker);
             return marker;
         });
@@ -598,13 +686,24 @@
                 },
                 body: JSON.stringify({ lat: lat, lng: lng }),
             }).then(function (r) {
-                if (r.ok) {
-                    marker.setLatLng([lat, lng]);
-                    addr.lat = lat;
-                    addr.lng = lng;
-                    addr.precise = true;
-                } else {
+                if (!r.ok) {
                     alert('Could not save position (HTTP ' + r.status + ')');
+                    return;
+                }
+                addr.lat = lat;
+                addr.lng = lng;
+                addr.precise = true;
+                if (marker) {
+                    marker.setLatLng([lat, lng]);
+                } else {
+                    // Newly placed address — drop a marker, add to state
+                    addresses.push(addr);
+                    var newMarker = buildMarker(addr);
+                    clusterGroup.addLayer(newMarker);
+                    markers.push(newMarker);
+                    var fn = COLOR_FNS[currentView];
+                    if (fn) newMarker.setStyle({ fillColor: fn(addr) });
+                    removeFromMissingList(addr.id);
                 }
             }).catch(function () { alert('Network error saving position'); });
 
@@ -622,6 +721,61 @@
         } else {
             map.setView([53.7248, -1.8658], 13);
         }
+
+        // ── "You are here" location tracking ─────────────────────────────────
+
+        var locateBtn       = document.getElementById('locateBtn');
+        var locationMarker  = null;
+        var accuracyCircle  = null;
+        var locating        = false;
+        var firstFix        = false;
+        var youAreHereIcon  = L.divIcon({ className: 'you-are-here', iconSize: [18, 18] });
+
+        function startLocate() {
+            locating = true;
+            firstFix = false;
+            locateBtn.classList.add('is-active');
+            locateBtn.setAttribute('aria-pressed', 'true');
+            map.locate({ watch: true, enableHighAccuracy: true, maximumAge: 5000 });
+        }
+
+        function stopLocate() {
+            locating = false;
+            locateBtn.classList.remove('is-active');
+            locateBtn.setAttribute('aria-pressed', 'false');
+            map.stopLocate();
+            if (locationMarker) { map.removeLayer(locationMarker); locationMarker = null; }
+            if (accuracyCircle) { map.removeLayer(accuracyCircle); accuracyCircle = null; }
+        }
+
+        locateBtn.addEventListener('click', function () {
+            if (locating) stopLocate(); else startLocate();
+        });
+
+        map.on('locationfound', function (e) {
+            if (locationMarker) {
+                locationMarker.setLatLng(e.latlng);
+                accuracyCircle.setLatLng(e.latlng).setRadius(e.accuracy);
+            } else {
+                locationMarker = L.marker(e.latlng, { icon: youAreHereIcon, interactive: false, keyboard: false }).addTo(map);
+                accuracyCircle = L.circle(e.latlng, {
+                    radius: e.accuracy,
+                    color: '#2563eb', weight: 1, opacity: 0.5,
+                    fillColor: '#2563eb', fillOpacity: 0.08,
+                    interactive: false,
+                }).addTo(map);
+            }
+            // Center the map on the first fix only — don't fight the user's panning afterwards.
+            if (!firstFix) {
+                firstFix = true;
+                map.setView(e.latlng, Math.max(map.getZoom(), 17));
+            }
+        });
+
+        map.on('locationerror', function (e) {
+            stopLocate();
+            alert('Could not get your location: ' + (e.message || 'permission denied'));
+        });
 
         // ── Slide-up sheet (replaces map popup) ──────────────────────────────
 
@@ -780,6 +934,80 @@
             });
         });
 
+        // ── Missing-addresses sheet (admin / ward-admin) ─────────────────────
+
+        var missingBtn      = document.getElementById('missingBtn');
+        var missingSheet    = document.getElementById('missingSheet');
+        var missingPanel    = document.getElementById('missingPanel');
+        var missingBackdrop = document.getElementById('missingBackdrop');
+        var missingClose    = document.getElementById('missingClose');
+        var missingList     = document.getElementById('missingList');
+        var missingCountEl  = document.getElementById('missingCount');
+
+        function renderMissingList() {
+            if (!missingList) return;
+            missingCountEl.textContent = missingAddresses.length + ' to place';
+            if (missingAddresses.length === 0) {
+                missingList.innerHTML = '<p class="text-sm text-gray-500 italic">All placed.</p>';
+                if (missingBtn) missingBtn.style.display = 'none';
+                return;
+            }
+            missingList.innerHTML = missingAddresses.map(function (a) {
+                return '<div class="flex justify-between items-center gap-2 p-2 border border-gray-200 dark:border-gray-700 rounded">'
+                    +    '<div class="flex-1 min-w-0">'
+                    +      '<p class="font-medium text-sm text-gray-800 dark:text-white truncate">' + esc(a.label) + '</p>'
+                    +      '<p class="text-xs text-gray-500 truncate">' + esc(a.postcode || '') + '</p>'
+                    +    '</div>'
+                    +    '<button class="place-btn shrink-0 bg-[#6AB023] hover:bg-[#5a9620] text-white px-3 py-1.5 rounded text-sm" data-id="' + a.id + '">Place</button>'
+                    +  '</div>';
+            }).join('');
+        }
+
+        function openMissingSheet() {
+            renderMissingList();
+            missingSheet.classList.remove('hidden');
+            requestAnimationFrame(function () { missingPanel.classList.remove('translate-y-full'); });
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeMissingSheet() {
+            if (!missingSheet) return;
+            missingPanel.classList.add('translate-y-full');
+            setTimeout(function () {
+                missingSheet.classList.add('hidden');
+                document.body.style.overflow = '';
+            }, 200);
+        }
+
+        function removeFromMissingList(id) {
+            missingAddresses = missingAddresses.filter(function (a) { return a.id !== id; });
+            if (missingBtn) {
+                var badge = missingBtn.querySelector('span');
+                if (missingAddresses.length === 0) {
+                    missingBtn.style.display = 'none';
+                } else if (badge) {
+                    badge.textContent = missingAddresses.length;
+                }
+            }
+        }
+
+        if (missingBtn && missingSheet) {
+            missingBtn.addEventListener('click', openMissingSheet);
+            missingClose.addEventListener('click', closeMissingSheet);
+            missingBackdrop.addEventListener('click', closeMissingSheet);
+            missingList.addEventListener('click', function (e) {
+                var btn = e.target.closest('.place-btn');
+                if (!btn) return;
+                var id = parseInt(btn.dataset.id, 10);
+                var addr = missingAddresses.find(function (a) { return a.id === id; });
+                if (!addr) return;
+                closeMissingSheet();
+                // Use the existing move workflow with no current marker; the
+                // map-click handler will create one on success.
+                setTimeout(function () { startMove(addr, null); }, 220);
+            });
+        }
+
         // ── View switching ───────────────────────────────────────────────────
 
         var CHOROPLETH_VIEWS = ['coverage', 'support'];
@@ -788,6 +1016,17 @@
         function applyView(view) {
             currentView = view;
             localStorage.setItem('mapView', view);
+
+            // Update tab/select UI first so the highlight is correct even if
+            // the map operations below throw.
+            document.querySelectorAll('.view-tab').forEach(function (btn) {
+                var active = btn.dataset.view === view;
+                btn.className = 'view-tab px-3 py-1.5 rounded text-sm font-medium transition whitespace-nowrap '
+                    + (active ? 'bg-[#6AB023] text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700');
+            });
+            var sel = document.getElementById('viewSelect');
+            if (sel && sel.value !== view) sel.value = view;
+            document.getElementById('legend').innerHTML = renderLegend(view);
 
             if (CHOROPLETH_VIEWS.indexOf(view) !== -1) {
                 if (map.hasLayer(clusterGroup)) map.removeLayer(clusterGroup);
@@ -802,17 +1041,13 @@
                 var fn = COLOR_FNS[view];
                 markers.forEach(function (m, i) { m.setStyle({ fillColor: fn(addresses[i]) }); });
             }
-
-            document.getElementById('legend').innerHTML = renderLegend(view);
-            document.querySelectorAll('.view-tab').forEach(function (btn) {
-                var active = btn.dataset.view === view;
-                btn.className = 'view-tab px-3 py-1.5 rounded text-sm font-medium transition '
-                    + (active ? 'bg-[#6AB023] text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700');
-            });
         }
 
         document.querySelectorAll('.view-tab').forEach(function (btn) {
             btn.addEventListener('click', function () { applyView(btn.dataset.view); });
+        });
+        document.getElementById('viewSelect')?.addEventListener('change', function () {
+            applyView(this.value);
         });
 
         // Honour ?focus=N — center on that address and open its sheet.
@@ -844,5 +1079,17 @@
     document.getElementById('wardSelect')?.addEventListener('change', function () {
         window.location.href = this.value;
     });
+
+    (function () {
+        var toggle = document.getElementById('legendToggle');
+        var box    = document.getElementById('legendBox');
+        if (!toggle || !box) return;
+        toggle.addEventListener('click', function () {
+            var isHidden = box.classList.toggle('hidden');
+            toggle.setAttribute('aria-expanded', String(!isHidden));
+            // Tell Leaflet the map area changed so it redraws tiles correctly.
+            window.dispatchEvent(new Event('resize'));
+        });
+    })();
     </script>
 </x-app-layout>

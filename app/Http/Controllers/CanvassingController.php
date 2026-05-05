@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\GeocodeMissingAddresses;
 use App\Models\Address;
 use App\Models\KnockResult;
 use App\Models\Ward;
@@ -282,14 +281,23 @@ class CanvassingController extends Controller
 
         $canEditPositions = $user->isAdmin() || $user->isWardAdmin();
 
-        return view('canvassing.map', compact('ward', 'wards', 'addressData', 'totalCount', 'geocodedCount', 'knockedCount', 'responseOptions', 'turnoutOptions', 'canEditPositions'));
-    }
+        $missingAddresses = collect();
+        if ($canEditPositions) {
+            $missingAddresses = Address::byWard($wardId)
+                ->whereNull('latitude')
+                ->orderBy('street_name')->orderBy('sort_order')
+                ->get(['id', 'ward_id', 'house_number', 'street_name', 'town', 'postcode'])
+                ->map(fn($a) => [
+                    'id'       => $a->id,
+                    'ward_id'  => $a->ward_id,
+                    'label'    => trim($a->house_number . ' ' . $a->street_name),
+                    'address'  => $a->full_address,
+                    'street'   => $a->street_name,
+                    'postcode' => $a->postcode,
+                ]);
+        }
 
-    public function geocode()
-    {
-        GeocodeMissingAddresses::dispatch();
-
-        return redirect()->back()->with('success', 'Geocoding queued — refresh the map in a minute.');
+        return view('canvassing.map', compact('ward', 'wards', 'addressData', 'totalCount', 'geocodedCount', 'knockedCount', 'responseOptions', 'turnoutOptions', 'canEditPositions', 'missingAddresses'));
     }
 
     public function updatePosition(Request $request, Address $address)
