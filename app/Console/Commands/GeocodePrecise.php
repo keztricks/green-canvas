@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Http;
 
 class GeocodePrecise extends Command
 {
-    protected $signature = 'addresses:geocode-precise {--ward= : Only process this ward ID} {--limit=0 : Maximum addresses to process per run (0 = all)} {--force : Re-geocode addresses already marked precise} {--throttle=1100 : Milliseconds between requests}';
+    protected $signature = 'addresses:geocode-precise {--ward= : Only process this ward ID} {--limit=0 : Maximum addresses to process per run (0 = all)} {--force : Re-geocode addresses already marked precise} {--throttle=1100 : Milliseconds between requests} {--min-rank=28 : Reject Nominatim results with place_rank below this (28 = house-level, 26 = street)}';
     protected $description = 'Geocode addresses to property level via Nominatim (slow, throttled to ~1 req/sec)';
 
     public function handle(): int
@@ -39,13 +39,15 @@ class GeocodePrecise extends Command
         }
 
         $verbose = $this->output->isVerbose();
+        $minRank = (int) $this->option('min-rank');
         $eta = gmdate('H:i:s', (int) ceil($ids->count() * $throttleMs / 1000));
-        $this->info("Geocoding {$ids->count()} addresses via Nominatim (~1 req/sec, ETA {$eta}). Ctrl-C to stop.");
+        $this->info("Geocoding {$ids->count()} addresses via Nominatim (~1 req/sec, min place_rank {$minRank}, ETA {$eta}). Ctrl-C to stop.");
 
         $bar = $verbose ? null : $this->output->createProgressBar($ids->count());
         if ($bar) $bar->start();
 
         $found = 0;
+        $rejected = 0;
         $missing = 0;
 
         foreach ($ids as $id) {
@@ -54,16 +56,19 @@ class GeocodePrecise extends Command
             if (!$address) continue;
 
             $label = trim($address->house_number . ' ' . $address->street_name) . ', ' . $address->postcode;
-            $coords = $this->lookup($address, $userAgent);
+            $result = $this->lookup($address, $userAgent, $minRank);
 
-            if ($coords) {
+            if ($result['coords']) {
                 $address->update([
-                    'latitude'         => $coords['lat'],
-                    'longitude'        => $coords['lng'],
+                    'latitude'         => $result['coords']['lat'],
+                    'longitude'        => $result['coords']['lng'],
                     'precise_position' => true,
                 ]);
                 $found++;
-                if ($verbose) $this->line("  <fg=green>✓</> {$label}  →  {$coords['lat']}, {$coords['lng']}");
+                if ($verbose) $this->line("  <fg=green>✓</> {$label}  →  rank {$result['rank']}, {$result['coords']['lat']}, {$result['coords']['lng']}");
+            } elseif ($result['rank'] !== null) {
+                $rejected++;
+                if ($verbose) $this->line("  <fg=yellow>~</> {$label}  (best match rank {$result['rank']} below min {$minRank} — skipped)");
             } else {
                 $missing++;
                 if ($verbose) $this->line("  <fg=red>✗</> {$label}  (no match)");
@@ -73,31 +78,48 @@ class GeocodePrecise extends Command
         }
 
         if ($bar) { $bar->finish(); $this->newLine(); }
-        $this->info("Done. {$found} matched precisely, {$missing} not found (will retry next run).");
+        $this->info("Done. {$found} matched, {$rejected} rejected (too coarse), {$missing} not found.");
 
         return self::SUCCESS;
     }
 
-    private function lookup(Address $address, string $userAgent): ?array
+    private function lookup(Address $address, string $userAgent, int $minRank): array
     {
+        $miss = ['coords' => null, 'rank' => null];
         try {
             $response = Http::withHeaders(['User-Agent' => $userAgent])
                 ->timeout(15)
                 ->get('https://nominatim.openstreetmap.org/search', [
-                    'street'     => trim($address->house_number . ' ' . $address->street_name),
-                    'postalcode' => $address->postcode,
-                    'country'    => 'United Kingdom',
-                    'format'     => 'json',
-                    'limit'      => 1,
+                    'street'         => trim($address->house_number . ' ' . $address->street_name),
+                    'postalcode'     => $address->postcode,
+                    'country'        => 'United Kingdom',
+                    'format'         => 'json',
+                    'addressdetails' => 1,
+                    'limit'          => 5,
                 ]);
 
-            if (!$response->successful()) return null;
+            if (!$response->successful()) return $miss;
             $results = $response->json();
-            if (empty($results) || !isset($results[0]['lat'], $results[0]['lon'])) return null;
+            if (empty($results)) return $miss;
 
-            return ['lat' => (float) $results[0]['lat'], 'lng' => (float) $results[0]['lon']];
+            // Pick the highest-precision result (place_rank: 30 = building, 26 = street, 21 = postcode)
+            $best = null;
+            foreach ($results as $r) {
+                $rank = (int) ($r['place_rank'] ?? 0);
+                if (!isset($r['lat'], $r['lon'])) continue;
+                if ($best === null || $rank > $best['rank']) {
+                    $best = ['rank' => $rank, 'lat' => $r['lat'], 'lon' => $r['lon']];
+                }
+            }
+            if (!$best) return $miss;
+            if ($best['rank'] < $minRank) return ['coords' => null, 'rank' => $best['rank']];
+
+            return [
+                'coords' => ['lat' => (float) $best['lat'], 'lng' => (float) $best['lon']],
+                'rank'   => $best['rank'],
+            ];
         } catch (\Exception) {
-            return null;
+            return $miss;
         }
     }
 }
