@@ -12,8 +12,11 @@
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-4 sm:-my-px sm:ms-6 sm:flex sm:items-center">
-                    <x-nav-link :href="route('canvassing.index')" :active="request()->routeIs('canvassing.*')" class="text-white hover:text-gray-200">
+                    <x-nav-link :href="route('canvassing.index')" :active="request()->routeIs('canvassing.*') && !request()->routeIs('canvassing.map*')" class="text-white hover:text-gray-200">
                         {{ __('Canvas') }}
+                    </x-nav-link>
+                    <x-nav-link :href="route('canvassing.map.all')" :active="request()->routeIs('canvassing.map*')" class="text-white hover:text-gray-200">
+                        {{ __('Map') }}
                     </x-nav-link>
                     @if(auth()->user()->canAccessExports())
                         <x-nav-link :href="route('exports.index')" :active="request()->routeIs('exports.*')" class="text-white hover:text-gray-200">
@@ -129,8 +132,11 @@
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
-            <x-responsive-nav-link :href="route('canvassing.index')" :active="request()->routeIs('canvassing.*')">
+            <x-responsive-nav-link :href="route('canvassing.index')" :active="request()->routeIs('canvassing.*') && !request()->routeIs('canvassing.map*')">
                 {{ __('Canvas') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('canvassing.map.all')" :active="request()->routeIs('canvassing.map*')">
+                {{ __('Map') }}
             </x-responsive-nav-link>
             @if(auth()->user()->canAccessExports())
                 <x-responsive-nav-link :href="route('exports.index')" :active="request()->routeIs('exports.*')">

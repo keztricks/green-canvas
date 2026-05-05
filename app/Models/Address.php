@@ -43,6 +43,11 @@ class Address extends Model
         return $this->hasMany(KnockResult::class);
     }
 
+    public function latestKnockResult()
+    {
+        return $this->hasOne(KnockResult::class)->latestOfMany('knocked_at');
+    }
+
     public function elections()
     {
         return $this->belongsToMany(Election::class)

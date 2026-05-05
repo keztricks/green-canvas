@@ -238,32 +238,12 @@ class CanvassingController extends Controller
         $addresses = Address::byWard($wardId)
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
-            ->with(['knockResults' => fn($q) => $q
-                ->select('id', 'address_id', 'user_id', 'response', 'vote_likelihood', 'turnout_likelihood', 'notes', 'knocked_at')
-                ->with(['user' => fn($uq) => $uq->select('id', 'name')])
-                ->latest('knocked_at')])
-            ->get(['id', 'house_number', 'street_name', 'town', 'postcode', 'latitude', 'longitude', 'do_not_knock']);
+            ->with(['latestKnockResult' => fn($q) => $q
+                ->select('knock_results.id', 'knock_results.address_id', 'knock_results.user_id', 'knock_results.response', 'knock_results.vote_likelihood', 'knock_results.turnout_likelihood', 'knock_results.notes', 'knock_results.knocked_at')
+                ->with(['user' => fn($uq) => $uq->select('id', 'name')])])
+            ->get(['id', 'ward_id', 'house_number', 'street_name', 'town', 'postcode', 'latitude', 'longitude', 'precise_position', 'do_not_knock']);
 
-        $addressData = $addresses->map(function ($address) {
-            $latest = $address->knockResults->first();
-            return [
-                'id'         => $address->id,
-                'lat'        => (float) $address->latitude,
-                'lng'        => (float) $address->longitude,
-                'label'      => $address->house_number . ' ' . $address->street_name,
-                'address'    => $address->full_address,
-                'street'     => $address->street_name,
-                'postcode'   => $address->postcode,
-                'precise'    => (bool) $address->precise_position,
-                'dnk'        => $address->do_not_knock,
-                'response'   => $latest?->response,
-                'turnout'    => $latest?->turnout_likelihood,
-                'likelihood' => $latest?->vote_likelihood,
-                'notes'      => $latest?->notes,
-                'canvasser'  => $latest?->user?->name,
-                'knocked_at' => $latest?->knocked_at?->format('d M Y H:i'),
-            ];
-        });
+        $addressData = $addresses->map(fn($a) => $this->serialiseAddressForMap($a));
 
         $stats = DB::table('addresses')
             ->where('ward_id', $wardId)
@@ -298,6 +278,137 @@ class CanvassingController extends Controller
         }
 
         return view('canvassing.map', compact('ward', 'wards', 'addressData', 'totalCount', 'geocodedCount', 'knockedCount', 'responseOptions', 'turnoutOptions', 'canEditPositions', 'missingAddresses'));
+    }
+
+    public function mapAll()
+    {
+        // ~80k addresses across the council exceeds the default 128M limit.
+        ini_set('memory_limit', '512M');
+
+        $user = auth()->user();
+        $wardsQuery = Ward::active()->orderBy('name');
+        if (!$user->isAdmin()) {
+            $wardsQuery->whereHas('users', function ($q) use ($user) {
+                $q->where('users.id', $user->id);
+            });
+        }
+        $wards = $wardsQuery->get();
+        $wardIds = $wards->pluck('id')->all();
+
+        if (empty($wardIds)) {
+            abort(404, 'No accessible wards.');
+        }
+
+        // All-wards mode covers tens of thousands of addresses across the whole
+        // council, so use raw DB queries (no Eloquent hydration overhead) and
+        // a single JOIN to the latest knock result per address.
+        $latestKnockSubquery = DB::table('knock_results as kr1')
+            ->select('kr1.address_id', 'kr1.user_id', 'kr1.response', 'kr1.vote_likelihood', 'kr1.turnout_likelihood', 'kr1.notes', 'kr1.knocked_at')
+            ->whereRaw('kr1.knocked_at = (SELECT MAX(kr2.knocked_at) FROM knock_results kr2 WHERE kr2.address_id = kr1.address_id)');
+
+        $addresses = DB::table('addresses')
+            ->leftJoinSub($latestKnockSubquery, 'lk', 'lk.address_id', '=', 'addresses.id')
+            ->leftJoin('users', 'users.id', '=', 'lk.user_id')
+            ->whereIn('addresses.ward_id', $wardIds)
+            ->whereNotNull('addresses.latitude')
+            ->whereNotNull('addresses.longitude')
+            ->select(
+                'addresses.id', 'addresses.ward_id', 'addresses.house_number', 'addresses.street_name',
+                'addresses.town', 'addresses.postcode', 'addresses.latitude', 'addresses.longitude',
+                'addresses.precise_position', 'addresses.do_not_knock',
+                'lk.response', 'lk.vote_likelihood', 'lk.turnout_likelihood', 'lk.notes', 'lk.knocked_at',
+                'users.name as canvasser_name',
+            )
+            ->get();
+
+        $addressData = $addresses->map(fn($a) => [
+            'id'         => $a->id,
+            'ward_id'    => $a->ward_id,
+            'lat'        => (float) $a->latitude,
+            'lng'        => (float) $a->longitude,
+            'label'      => $a->house_number . ' ' . $a->street_name,
+            'address'    => "{$a->house_number} {$a->street_name}, {$a->town}, {$a->postcode}",
+            'street'     => $a->street_name,
+            'postcode'   => $a->postcode,
+            'precise'    => (bool) $a->precise_position,
+            'dnk'        => (bool) $a->do_not_knock,
+            'response'   => $a->response,
+            'turnout'    => $a->turnout_likelihood,
+            'likelihood' => $a->vote_likelihood,
+            'notes'      => $a->notes,
+            'canvasser'  => $a->canvasser_name,
+            'knocked_at' => $a->knocked_at ? substr($a->knocked_at, 0, 16) : null,
+        ]);
+        unset($addresses); // free memory before serialising the response
+
+        $stats = DB::table('addresses')
+            ->whereIn('ward_id', $wardIds)
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw('SUM(CASE WHEN latitude IS NOT NULL THEN 1 ELSE 0 END) as geocoded')
+            ->selectRaw('SUM(CASE WHEN EXISTS(SELECT 1 FROM knock_results WHERE address_id = addresses.id) THEN 1 ELSE 0 END) as knocked')
+            ->first();
+        $totalCount    = (int) $stats->total;
+        $geocodedCount = (int) $stats->geocoded;
+        $knockedCount  = (int) $stats->knocked;
+
+        $responseOptions  = KnockResult::responseOptions();
+        $turnoutOptions   = KnockResult::turnoutLikelihoodOptions();
+        $canEditPositions = $user->isAdmin() || $user->isWardAdmin();
+
+        $missingAddresses = collect();
+        if ($canEditPositions) {
+            $missingAddresses = Address::whereIn('ward_id', $wardIds)
+                ->whereNull('latitude')
+                ->orderBy('street_name')->orderBy('sort_order')
+                ->get(['id', 'ward_id', 'house_number', 'street_name', 'town', 'postcode'])
+                ->map(fn($a) => [
+                    'id'       => $a->id,
+                    'ward_id'  => $a->ward_id,
+                    'label'    => trim($a->house_number . ' ' . $a->street_name),
+                    'address'  => $a->full_address,
+                    'street'   => $a->street_name,
+                    'postcode' => $a->postcode,
+                ]);
+        }
+
+        $ward = null; // signals "all wards" mode to the view
+
+        return view('canvassing.map', compact('ward', 'wards', 'addressData', 'totalCount', 'geocodedCount', 'knockedCount', 'responseOptions', 'turnoutOptions', 'canEditPositions', 'missingAddresses'));
+    }
+
+    private function serialiseAddressForMap(Address $address): array
+    {
+        $latest = $address->latestKnockResult;
+        return [
+            'id'         => $address->id,
+            'ward_id'    => $address->ward_id,
+            'lat'        => (float) $address->latitude,
+            'lng'        => (float) $address->longitude,
+            'label'      => $address->house_number . ' ' . $address->street_name,
+            'address'    => $address->full_address,
+            'street'     => $address->street_name,
+            'postcode'   => $address->postcode,
+            'precise'    => (bool) $address->precise_position,
+            'dnk'        => $address->do_not_knock,
+            'response'   => $latest?->response,
+            'turnout'    => $latest?->turnout_likelihood,
+            'likelihood' => $latest?->vote_likelihood,
+            'notes'      => $latest?->notes,
+            'canvasser'  => $latest?->user?->name,
+            'knocked_at' => $latest?->knocked_at?->format('d M Y H:i'),
+        ];
+    }
+
+    public function wardBoundaries()
+    {
+        $path = storage_path('app/ward-boundaries/calderdale.geojson');
+        if (!file_exists($path)) {
+            abort(404, 'Ward boundary data not available.');
+        }
+        return response()->file($path, [
+            'Content-Type'  => 'application/geo+json',
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
     }
 
     public function updatePosition(Request $request, Address $address)
