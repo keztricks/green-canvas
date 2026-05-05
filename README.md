@@ -1,59 +1,180 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Green Canvas
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A self-hosted door-to-door canvassing management app for local Green Party branches. Built for, and in production with, [Calderdale Greens](https://calderdale.greenparty.org.uk).
 
-## About Laravel
+[![Laravel 12](https://img.shields.io/badge/Laravel-12-FF2D20?logo=laravel)](https://laravel.com) [![PHP 8.2+](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php)](https://www.php.net) [![AGPL-3.0](https://img.shields.io/badge/Licence-AGPL--3.0-blue)](LICENSE)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## What it does
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Browse by ward → street → address.** Canvassers see only the wards they're assigned to; ward admins see their patch; admins see everything.
+- **Log knock results.** Party preference, turnout likelihood, vote likelihood, free-text notes. Multiple knocks per address with full history.
+- **Track elections.** Local, general, and by-elections. Per-address voting status (voted / not voted / unknown) so you know who to chase for postal-vote follow-up.
+- **Map view.** Every address as a dot, coloured by supporter / party / likelihood / coverage / support. Filterable legend, ward boundaries, optional cross-ward "all wards" mode. Property-precise pins where UPRN data is available, postcode-fanned otherwise.
+- **Exports.** Excel files for paper canvassing or sharing with regional party staff. Scheduled per ward per user.
+- **Roles.** Admin, ward admin, canvasser. Ward-scoping enforced both in middleware and in business logic.
 
-## Learning Laravel
+## Who this is for
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+Local Green Party branches running canvassing for **a single council**. Specifically: a tech-comfortable organiser, or a developer helping their local branch.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+It is **not**:
 
-## Laravel Sponsors
+- A hosted service (you run it yourself).
+- A national database (each branch runs their own deployment with their own data).
+- A general-purpose CRM (it's narrowly built around UK electoral-register and ward workflows).
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+If your branch covers multiple councils today, you currently run multiple instances. Multi-council and multi-constituency support are on the roadmap — see [Known limitations](#known-limitations).
 
-### Premium Partners
+## Status & origin
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+In production with Calderdale Greens since early 2026, refined over multiple election cycles. Open-sourced so other branches can use, fork, or send improvements back.
+
+Built with heavy use of AI-assisted development by a former senior software engineer. That's a deliberate choice — most of this codebase exists because the maintainer could move quickly with AI as a junior pair, not in spite of it. Code is reviewed and maintained by a human who reads it. If you spot something that looks AI-generated and wrong, please open an issue rather than letting it slide.
+
+## Requirements
+
+- PHP 8.2+
+- Composer
+- Node 20+
+- SQLite (default) or MySQL/Postgres if you have particular ops preferences
+- ~500 MB disk if you're storing the merged UPRN dataset for a council
+
+## Quick start (local development)
+
+```bash
+git clone <this repo> green-canvas && cd green-canvas
+composer setup                          # install + migrate + build assets
+php artisan canvassing:create-admin     # interactive — create your first user
+composer dev                            # Laravel server + queue + log viewer + Vite HMR
+```
+
+Visit `http://localhost:8000` and log in as the admin user you just created. The app will be empty — see the next section for getting real data in.
+
+To populate with synthetic demo data instead (useful for development):
+
+```bash
+php artisan db:seed
+```
+
+Note: the seeder creates demo accounts with the password `password`. Don't run it on a deployment that's going to hold real data.
+
+## Setting up a real branch
+
+Three things you need: an electoral register, ward boundaries, and (ideally) a council UPRN/address mapping for property-precise pins.
+
+### 1. Per-deployment configuration
+
+Edit `.env`:
+
+```bash
+APP_NAME="Calderdale Greens"
+CANVASSING_BRANCH_NAME="Calderdale Greens"
+CANVASSING_COUNCIL_NAME="Calderdale"
+CANVASSING_DEFAULT_CONSTITUENCY="Halifax"
+CANVASSING_WARD_BOUNDARY_FILE="ward-boundaries/calderdale.geojson"
+CANVASSING_TOWN_ALIASES="Halifax,Sowerby Bridge,Hebden Bridge,Todmorden,Brighouse"
+```
+
+All settings live in [config/canvassing.php](config/canvassing.php) with explanations.
+
+### 2. Electoral register
+
+Your ERO (Electoral Registration Officer) — usually based at your council — can supply the full electoral register to political parties, candidates, and elected representatives under [Section 99 of the Representation of the People Act](https://www.legislation.gov.uk/uksi/2001/341/regulation/99/made). Different roles get different entitlements; your local Green Party agent will know the right wording.
+
+Once you have the CSV, go to `/import` in the app and upload one ward at a time. The expected format is documented in [docs/data-formats.md](docs/data-formats.md) — you may need to reshape your CSV or edit the column constants in [app/Http/Controllers/AddressImportController.php](app/Http/Controllers/AddressImportController.php) if your council's ERO sends a different layout. The success message after each import tells you how many rows were skipped and why, which makes diagnosis straightforward.
+
+### 3. Ward boundaries
+
+Free, OGL v3, available from [OS Boundary-Line](https://www.ordnancesurvey.co.uk/products/boundary-line). Download as TAB or SHP, filter to your council's wards in [QGIS](https://qgis.org) or [mapshaper](https://mapshaper.org), and save as a GeoJSON FeatureCollection at the path you set in `CANVASSING_WARD_BOUNDARY_FILE`. Each feature's `properties.name` should match your `Ward.name` values.
+
+### 4. UPRN-precise geocoding (optional but recommended)
+
+Without UPRN data, all addresses on a postcode share one centroid and the map fans them out in a sunflower spiral. With UPRN data, each address gets a rooftop coordinate.
+
+You need two files:
+
+1. **A council UPRN/address mapping.** FOI your council with wording like "Council Tax property list including UPRN". This is widely released under OGL v3 — see [Calderdale's release](storage/app/uprn-data/calderdale.csv) for a worked example you can attribute when asking.
+2. **OS Open UPRN.** Free, [download from OS](https://www.ordnancesurvey.co.uk/products/os-open-uprn).
+
+Then run:
+
+```bash
+# Merge once (or whenever the OS release updates)
+php artisan addresses:build-uprn-data \
+  --council=path/to/council-foi.csv \
+  --os-uprn=path/to/osopenuprn_NNNN.csv \
+  --output=storage/app/uprn-data/{your-council}.csv
+
+# After each electoral-register import, run UPRN geocoding
+php artisan addresses:geocode-uprn --data=storage/app/uprn-data/{your-council}.csv
+
+# Optional postcode-centroid fallback for whatever didn't match
+php artisan addresses:geocode
+
+# Anything still without coordinates → admins/ward-admins place by clicking
+# on the map (use the "Missing addresses" floating button)
+```
+
+Calderdale's merged UPRN dataset is included in the repo under [storage/app/uprn-data/](storage/app/uprn-data/) — both source licences permit redistribution with attribution, which the map already provides.
+
+### 5. Required attribution
+
+If you use OS data, the map's tile-layer attribution **must** include:
+
+- `Contains OS data © Crown copyright and database right [year]`
+- `Council data © {Your Council} Council, OGL v3` (set via `CANVASSING_COUNCIL_NAME`)
+
+Both are automatic — don't remove them.
+
+## Deploying
+
+`Dockerfile` and [`update.sh`](update.sh) are present as starting points. For production, you'll want to:
+
+- Set `APP_ENV=production` and `APP_DEBUG=false`.
+- Configure mail (`MAIL_*`) — scheduled exports go out as email attachments.
+- Run a queue worker for export jobs (`php artisan queue:work`).
+- Serve over HTTPS.
+
+## Known limitations
+
+These are honest, not hidden:
+
+- **One council, one constituency per deployment.** Branches spanning multiple councils run multiple instances. A `Constituency` model with `wards.constituency_id` is the planned next step — happy to discuss in an issue if your branch needs this.
+- **Importers were written against Calderdale's specific CSV shapes.** The expected layouts are documented in [docs/data-formats.md](docs/data-formats.md). If your council's data looks different, you'll either reshape the CSV before import or edit the importer. PRs adding pluggable parsers are very welcome.
+- **No Excel import support** — CSV only.
+- **Manual geocoding workflow.** After each import you run two artisan commands. A scheduled or auto-trigger flow would be a small improvement.
+- **Ward-reference CSV format** assumes 14 preamble lines and specific column positions. Same caveat as above.
+
+## Architecture (briefly)
+
+Server-rendered Laravel 12 + Blade with Alpine.js for interactivity and Tailwind for styling. SQLite by default for sessions/cache/queue. No SPA, no separate frontend repo.
+
+Models, request flow, role enforcement, geocoding pipeline: see [CLAUDE.md](CLAUDE.md) for the full overview.
 
 ## Contributing
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+PRs welcome — please read [CONTRIBUTING.md](CONTRIBUTING.md) first. The most useful contributions are:
 
-## Code of Conduct
+- Importer support for other councils' data formats.
+- Multi-constituency / multi-council modelling work (open an issue first).
+- Accessibility improvements.
+- Documentation of how you stood the app up for a council that isn't Calderdale.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Security
 
-## Security Vulnerabilities
+Vulnerability disclosure: see [SECURITY.md](SECURITY.md). Please don't open public issues for security bugs.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Licence
 
-## License
+[AGPL-3.0](LICENSE). Forking and self-hosting is fine; running the app as a service for others requires you to share your modifications back. The licence reflects the project's intent: a tool built collaboratively for political organising, with improvements flowing back to the community rather than into closed forks.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Acknowledgements
+
+- [Laravel](https://laravel.com), the framework underneath all this.
+- [Ordnance Survey](https://www.ordnancesurvey.co.uk) for OS Open UPRN and OS Boundary-Line under the Open Government Licence.
+- [postcodes.io](https://postcodes.io) for the postcode-centroid fallback.
+- [OpenStreetMap](https://www.openstreetmap.org) contributors for map tiles.
+- [Calderdale Council](https://www.calderdale.gov.uk) for FOI release of UPRN/address data under OGL v3.
+- [Calderdale Greens](https://calderdale.greenparty.org.uk) for being the test bed.
