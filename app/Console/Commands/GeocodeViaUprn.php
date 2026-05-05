@@ -159,14 +159,9 @@ class GeocodeViaUprn extends Command
 
     private function filterNoise(array $tokens): array
     {
-        // Drop unambiguous town names and postcode-shaped tokens — they don't
+        // Drop configured town names and postcode-shaped tokens — they don't
         // distinguish between candidates and create false "extra token" weight.
-        static $noiseSet = [
-            'halifax' => true, 'bradford' => true, 'todmorden' => true,
-            'hebden' => true, 'mytholmroyd' => true, 'elland' => true,
-            'brighouse' => true, 'queensbury' => true, 'copley' => true,
-            'wainstalls' => true, 'midgley' => true, 'charlestown' => true,
-        ];
+        $noiseSet = $this->noiseSet();
 
         $out = [];
         foreach ($tokens as $t => $_) {
@@ -176,6 +171,26 @@ class GeocodeViaUprn extends Command
             $out[$t] = true;
         }
         return $out;
+    }
+
+    /**
+     * Build a {token => true} set of noise words from configured town aliases.
+     * Each alias is split into individual lowercase tokens so multi-word
+     * names ("Sowerby Bridge") drop both halves.
+     */
+    private function noiseSet(): array
+    {
+        static $cache = null;
+        if ($cache !== null) {
+            return $cache;
+        }
+        $set = [];
+        foreach (config('canvassing.town_aliases', []) as $alias) {
+            foreach (preg_split('/\s+/', strtolower((string) $alias), -1, PREG_SPLIT_NO_EMPTY) as $token) {
+                $set[$token] = true;
+            }
+        }
+        return $cache = $set;
     }
 
     private function normUprn(string $uprn): string

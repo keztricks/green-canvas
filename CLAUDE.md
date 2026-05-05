@@ -10,7 +10,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # First-time setup
-composer setup          # install deps, generate key, migrate, npm install, build assets
+composer setup                                # install deps, generate key, migrate, npm install, build assets
+php artisan canvassing:create-admin           # interactive — create the first admin user
 
 # Development (runs 4 concurrent processes: Laravel server, queue, Pail log viewer, Vite HMR)
 composer dev
@@ -111,6 +112,22 @@ php artisan addresses:geocode
 The merged UPRN data files in `storage/app/uprn-data/` are committed to the
 repository (the OS Open UPRN and Calderdale FOI licences both permit
 redistribution with attribution, which the map already provides).
+
+## Per-deployment configuration
+
+`config/canvassing.php` holds per-deployment settings; each is overridable via `.env`:
+
+| Key | Used by | Notes |
+|---|---|---|
+| `branch_name` | login page heading | e.g. "Calderdale Greens" |
+| `credit_line` | layout footers + map loading screen | defaults to "Made in Halifax" |
+| `council_name` | map attribution line | omitted when null |
+| `default_constituency` | new addresses (import + manual create) | denormalised onto `Address` |
+| `ward_boundary_file` | `CanvassingController::wardBoundaries()` | path under `storage/app/` |
+| `ward_reference_dir` | `AddressImportController::loadStreetReference()` | files looked up by `Str::slug($wardName).csv` |
+| `town_aliases` | importer field-skipping + UPRN matcher noise filter | comma-separated env var |
+
+The model assumes one council and one constituency per deployment. Multi-constituency support (introducing a `Constituency` model with `wards.constituency_id`) is on the roadmap; the README has the user-facing version.
 
 ## Key Conventions
 

@@ -7,6 +7,7 @@ use App\Models\Address;
 use App\Models\Ward;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class AddressImportController extends Controller
 {
@@ -23,36 +24,11 @@ class AddressImportController extends Controller
 
     private function loadStreetReference(string $wardName): array
     {
-        // Map of ward reference files
-        $referenceFiles = [
-            'Wainhouse' => storage_path('app/ward-references/wainhouse.csv'),
-            'Hebden Bridge & Todmorden East' => storage_path('app/ward-references/hebden-bridge-todmorden-east.csv'),
-            'Brighouse' => storage_path('app/ward-references/brighouse.csv'),
-            'Elland' => storage_path('app/ward-references/elland.csv'),
-            'Greetland' => storage_path('app/ward-references/greetland.csv'),
-            'Halifax Town' => storage_path('app/ward-references/halifax-town.csv'),
-            'Hipperholme & Lightcliffe' => storage_path('app/ward-references/hipperholme-lightcliffe.csv'),
-            'Illingworth & Mixenden' => storage_path('app/ward-references/illingworth-mixenden.csv'),
-            'Luddendenfoot' => storage_path('app/ward-references/luddendenfoot.csv'),
-            'Northowram & Shelf' => storage_path('app/ward-references/northowram-shelf.csv'),
-            'Ovenden' => storage_path('app/ward-references/ovenden.csv'),
-            'Park' => storage_path('app/ward-references/park.csv'),
-            'Rastrick' => storage_path('app/ward-references/rastrick.csv'),
-            'Ryburn' => storage_path('app/ward-references/ryburn.csv'),
-            'Salterhebble Southowram and Skircoat Green' => storage_path('app/ward-references/salterhebble-southowram-skircoat-green.csv'),
-            'Sowerby Bridge' => storage_path('app/ward-references/sowerby-bridge.csv'),
-            'Todmorden West' => storage_path('app/ward-references/todmorden-west.csv'),
-            'Warley' => storage_path('app/ward-references/warley.csv'),
-        ];
-        
         $postcodeToStreet = [];
-        
-        if (!isset($referenceFiles[$wardName])) {
-            return $postcodeToStreet;
-        }
-        
-        $filePath = $referenceFiles[$wardName];
-        
+
+        $dir = trim(config('canvassing.ward_reference_dir'), '/');
+        $filePath = storage_path('app/' . $dir . '/' . Str::slug($wardName) . '.csv');
+
         if (!file_exists($filePath)) {
             return $postcodeToStreet;
         }
@@ -140,34 +116,42 @@ class AddressImportController extends Controller
 
                 // Try to get definitive street name from reference
                 $streetName = $streetReference[$postcode] ?? null;
-                
+                $townAliases = config('canvassing.town_aliases', []);
+                $defaultTown = $townAliases[0] ?? '';
+
                 // If not in reference, parse from address fields
                 if (!$streetName) {
                     $result = $this->parseAddressFields($addressFields);
-                    
+
                     if (!$result || !$result['street']) {
                         $skipped++;
                         continue;
                     }
-                    
+
                     $streetName = $result['street'];
                     $houseNumber = $result['house_number'];
-                    $town = $result['town'] ?: 'Halifax';
+                    $town = $result['town'] ?: $defaultTown;
                 } else {
                     // Use reference street, extract house number
                     $houseNumber = $this->extractHouseNumber($addressFields, $streetName);
-                    
+
                     if (!$houseNumber) {
                         $skipped++;
                         continue;
                     }
-                    
-                    // Find town from address fields
-                    $town = 'Halifax';
-                    foreach ($addressFields as $field) {
-                        if (preg_match('/^(Halifax|Sowerby Bridge|Copley|Hebden Bridge|Todmorden|Charlestown|Mytholmroyd|Wainstalls|Pecket Well|Midgley)/i', $field)) {
-                            $town = $field;
-                            break;
+
+                    // Find town from address fields against the configured alias list.
+                    $town = $defaultTown;
+                    if (!empty($townAliases)) {
+                        $aliasPattern = '/^(' . implode('|', array_map(
+                            fn ($a) => preg_quote($a, '/'),
+                            $townAliases
+                        )) . ')/i';
+                        foreach ($addressFields as $field) {
+                            if (preg_match($aliasPattern, $field)) {
+                                $town = $field;
+                                break;
+                            }
                         }
                     }
                 }
@@ -182,7 +166,7 @@ class AddressImportController extends Controller
                         'street_name' => $streetName,
                         'town' => $town,
                         'postcode' => $postcode,
-                        'constituency' => 'Halifax',
+                        'constituency' => config('canvassing.default_constituency'),
                         'sort_order' => $this->extractNumericSort($houseNumber),
                         'elector_count' => 0,
                     ];
@@ -251,15 +235,44 @@ class AddressImportController extends Controller
         return $matches[0] ?? 0;
     }
 
+    /**
+     * Regex matching configured town aliases as a prefix (e.g. "Halifax HX1 1AA" matches).
+     * Returns null when no aliases are configured.
+     */
+    private function townSkipPattern(): ?string
+    {
+        $aliases = config('canvassing.town_aliases', []);
+        if (empty($aliases)) {
+            return null;
+        }
+        return '/^(' . implode('|', array_map(fn ($a) => preg_quote($a, '/'), $aliases)) . ')/i';
+    }
+
+    /**
+     * Regex matching a field that is exactly a configured town alias.
+     * Returns null when no aliases are configured.
+     */
+    private function townExactPattern(): ?string
+    {
+        $aliases = config('canvassing.town_aliases', []);
+        if (empty($aliases)) {
+            return null;
+        }
+        return '/^(' . implode('|', array_map(fn ($a) => preg_quote($a, '/'), $aliases)) . ')$/i';
+    }
+
     private function extractHouseNumber(array $addressFields, ?string $streetName = null): ?string
     {
+        $townSkip = $this->townSkipPattern();
+
         // Find the first field that contains useful house identifier
         foreach ($addressFields as $field) {
             $trimmed = trim($field);
             if (empty($trimmed)) continue;
-            
-            // Skip if it's just a town name or postcode
-            if (preg_match('/^(Halifax|Sowerby Bridge|Copley|Hebden Bridge|Todmorden|Charlestown|Mytholmroyd|Wainstalls|Pecket Well|Midgley|HX\d)/i', $trimmed)) continue;
+
+            // Skip if it's just a town name or postcode outward
+            if ($townSkip && preg_match($townSkip, $trimmed)) continue;
+            if (preg_match('/^[A-Z]{1,2}\d/i', $trimmed)) continue;
             
             // If this field contains the street name, extract the part before it
             if ($streetName && stripos($trimmed, $streetName) !== false) {
@@ -286,12 +299,14 @@ class AddressImportController extends Controller
         $streetTypes = 'Road|Street|Lane|Avenue|Drive|Way|Close|Place|Terrace|Walk|Gardens|Park|Grove|Crescent|Rise|View|Hill|Square|Green|Mews|Row|Parade|Broadway|Circle|Path|Croft|Bank|Mount|Fold|Vale|Heights|Side|Yard|Promenade|Approach|Court';
         
         // Filter out empty fields and likely town/postcode fields
+        $townExact = $this->townExactPattern();
         $cleanFields = [];
         foreach ($addressFields as $field) {
             $trimmed = trim($field);
             if (empty($trimmed)) continue;
-            // Skip if it's just "Halifax" or looks like a postcode
-            if (preg_match('/^(Halifax|HX\d+\s*\d[A-Z]{2})$/i', $trimmed)) continue;
+            // Skip if it's a configured town alias on its own, or a full postcode
+            if ($townExact && preg_match($townExact, $trimmed)) continue;
+            if (preg_match('/^[A-Z]{1,2}\d+\s*\d[A-Z]{2}$/i', $trimmed)) continue;
             $cleanFields[] = $trimmed;
         }
         

@@ -49,7 +49,7 @@
                          alt="Green Party" 
                          class="h-16 mb-4 mx-auto theme-logo">
                 </a>
-                <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Calderdale Greens</h1>
+                <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ config('canvassing.branch_name') }}</h1>
                 <p class="text-sm text-gray-600 dark:text-gray-400">Canvassing Reporting System</p>
             </div>
 
@@ -61,7 +61,9 @@
             <footer class="mt-8">
                 <div class="text-center text-sm text-gray-600 dark:text-gray-400">
                     <div>v{{ config('app.version') }}</div>
-                    <div class="text-xs mt-1">Made in Halifax</div>
+                    @if($credit = config('canvassing.credit_line'))
+                        <div class="text-xs mt-1">{{ $credit }}</div>
+                    @endif
                 </div>
             </footer>
         </div>

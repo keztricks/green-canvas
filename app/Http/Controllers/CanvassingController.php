@@ -401,7 +401,7 @@ class CanvassingController extends Controller
 
     public function wardBoundaries()
     {
-        $path = storage_path('app/ward-boundaries/calderdale.geojson');
+        $path = storage_path('app/' . ltrim(config('canvassing.ward_boundary_file'), '/'));
         if (!file_exists($path)) {
             abort(404, 'Ward boundary data not available.');
         }
@@ -585,7 +585,7 @@ class CanvassingController extends Controller
             'street_name' => $validated['street_name'],
             'town' => $validated['town'],
             'postcode' => $validated['postcode'],
-            'constituency' => 'Halifax',
+            'constituency' => config('canvassing.default_constituency'),
             'sort_order' => $sortOrder,
         ]);
 

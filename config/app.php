@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Calderdale Canvassing'),
+    'name' => env('APP_NAME', 'Green Canvas'),
 
     /*
     |--------------------------------------------------------------------------

@@ -37,10 +37,12 @@
         "setup": [
             "composer install",
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
+            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
             "@php artisan key:generate",
             "@php artisan migrate --force",
             "npm install",
-            "npm run build"
+            "npm run build",
+            "@php -r \"echo \\\"\\n  Setup complete.\\n  Create your first admin user: php artisan canvassing:create-admin\\n  Then start the dev server:        composer dev\\n\\n\\\";\""
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",

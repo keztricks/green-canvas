@@ -259,7 +259,7 @@
             'Delivering some hope…',
             'Brewing some tea…',
             'Digging out the rosettes…',
-            'Made with love in Halifax…',
+            'Created with love in Halifax...'
         ];
         function rotate() {
             if (!loadingTextEl) return;
@@ -702,8 +702,11 @@
         map.attributionControl.setPosition('topleft');
         var tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · '
-                + 'Contains OS data © Crown copyright and database right · '
-                + 'Council data © Calderdale Council, OGL v3',
+                + 'Contains OS data © Crown copyright and database right'
+                @if($council = config('canvassing.council_name'))
+                + ' · Council data © {!! addslashes($council) !!} Council, OGL v3'
+                @endif
+                ,
             maxZoom: 19,
         });
         tileLayer.addTo(map);
