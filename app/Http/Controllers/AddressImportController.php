@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\GeocodeMissingAddresses;
 use App\Models\Address;
 use App\Models\Ward;
 use Illuminate\Http\Request;
@@ -11,6 +10,33 @@ use Illuminate\Support\Str;
 
 class AddressImportController extends Controller
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Expected electoral-register CSV format
+    |--------------------------------------------------------------------------
+    |
+    | Green Canvas was written against Calderdale's full (unmarked) electoral
+    | register format, which is a 13-column CSV (one row per elector). The
+    | first row is a header and is skipped. Address fields are concatenated
+    | across the six "Address1..Address6" columns; the importer parses a
+    | street name and house number out of them, with optional help from a
+    | per-ward street-reference CSV (see config('canvassing.ward_reference_dir')).
+    |
+    | Different councils' EROs send different layouts — if your CSV has
+    | a different column order, edit the constants below or send a PR
+    | adding a per-deployment column-mapping config.
+    |
+    | See docs/data-formats.md for a worked example.
+    */
+    private const COL_POSTCODE  = 6;
+    private const COL_ADDRESS_1 = 7;
+    private const COL_ADDRESS_2 = 8;
+    private const COL_ADDRESS_3 = 9;
+    private const COL_ADDRESS_4 = 10;
+    private const COL_ADDRESS_5 = 11;
+    private const COL_ADDRESS_6 = 12;
+    private const MIN_COLUMNS   = 10;
+
     public function index()
     {
         if (!auth()->user()->isAdmin()) {
@@ -76,41 +102,42 @@ class AddressImportController extends Controller
         
         $imported = 0;
         $updated = 0;
-        $skipped = 0;
+        $skipReasons = [
+            'too_few_columns'   => 0,
+            'missing_postcode'  => 0,
+            'unparseable_street'=> 0,
+            'no_house_number'   => 0,
+        ];
 
         DB::beginTransaction();
-        
+
         try {
             // Track elector count per unique address
             $addressCounts = [];
-            
+
             // Load street reference for this ward
             $ward = Ward::find($request->ward_id);
             $streetReference = $this->loadStreetReference($ward->name);
-            
+
             while (($row = fgetcsv($handle)) !== false) {
-                // Electoral register format: 
-                // Columns: 0=Prefix, 1=Number, 2=Suffix, 3=Markers, 4=DOB, 5=Name, 6=Postcode, 
-                //          7=Address1, 8=Address2, 9=Address3, 10=Address4, 11=Address5, 12=Address6
-                
-                if (count($row) < 10) {
+                if (count($row) < self::MIN_COLUMNS) {
+                    $skipReasons['too_few_columns']++;
                     continue;
                 }
 
                 $addressFields = [
-                    trim($row[7] ?? ''),
-                    trim($row[8] ?? ''),
-                    trim($row[9] ?? ''),
-                    trim($row[10] ?? ''),
-                    trim($row[11] ?? ''),
-                    trim($row[12] ?? ''),
+                    trim($row[self::COL_ADDRESS_1] ?? ''),
+                    trim($row[self::COL_ADDRESS_2] ?? ''),
+                    trim($row[self::COL_ADDRESS_3] ?? ''),
+                    trim($row[self::COL_ADDRESS_4] ?? ''),
+                    trim($row[self::COL_ADDRESS_5] ?? ''),
+                    trim($row[self::COL_ADDRESS_6] ?? ''),
                 ];
-                
-                $postcode = trim($row[6]);
-                
-                // Skip if missing postcode
+
+                $postcode = trim($row[self::COL_POSTCODE]);
+
                 if (empty($postcode)) {
-                    $skipped++;
+                    $skipReasons['missing_postcode']++;
                     continue;
                 }
 
@@ -124,7 +151,7 @@ class AddressImportController extends Controller
                     $result = $this->parseAddressFields($addressFields);
 
                     if (!$result || !$result['street']) {
-                        $skipped++;
+                        $skipReasons['unparseable_street']++;
                         continue;
                     }
 
@@ -136,7 +163,7 @@ class AddressImportController extends Controller
                     $houseNumber = $this->extractHouseNumber($addressFields, $streetName);
 
                     if (!$houseNumber) {
-                        $skipped++;
+                        $skipReasons['no_house_number']++;
                         continue;
                     }
 
@@ -203,8 +230,6 @@ class AddressImportController extends Controller
             DB::commit();
             fclose($handle);
 
-            GeocodeMissingAddresses::dispatch();
-
             $message = "Successfully processed " . count($addressCounts) . " unique addresses";
             if ($imported > 0) {
                 $message .= " ({$imported} new)";
@@ -212,8 +237,22 @@ class AddressImportController extends Controller
             if ($updated > 0) {
                 $message .= " ({$updated} updated)";
             }
-            if ($skipped > 0) {
-                $message .= " ({$skipped} incomplete records skipped)";
+
+            $totalSkipped = array_sum($skipReasons);
+            if ($totalSkipped > 0) {
+                $reasonLabels = [
+                    'too_few_columns'    => 'too few columns',
+                    'missing_postcode'   => 'missing postcode',
+                    'unparseable_street' => 'street unparseable',
+                    'no_house_number'    => 'no house number',
+                ];
+                $parts = [];
+                foreach ($skipReasons as $reason => $count) {
+                    if ($count > 0) {
+                        $parts[] = "{$count} {$reasonLabels[$reason]}";
+                    }
+                }
+                $message .= " ({$totalSkipped} skipped: " . implode(', ', $parts) . ")";
             }
 
             return redirect()->route('import.index')
