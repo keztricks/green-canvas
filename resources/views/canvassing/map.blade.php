@@ -250,77 +250,29 @@
             return html;
         }
 
-        // ── Spiral layout: merge postcodes whose fans overlap, then place each
-        //    group's addresses in a Vogel sunflower spiral around the centroid
-        //    so dots never overlap regardless of postcode density. ───────────
+        // ── Group addresses by exact lat/lng. Fan only those that share an
+        //    identical coordinate (e.g. flats at one UPRN, or addresses that
+        //    fell back to a postcode centroid). Everything else stays put.
 
         var SPIRAL_C = 0.0000226;                        // base spacing ≈ 2.5 m
         var GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
-        var MERGE_THRESHOLD = 0.00018;                   // ~20 m between centroids
 
         var byCoord = {};
         addresses.forEach(function (a, i) {
             var key = a.lat.toFixed(7) + ',' + a.lng.toFixed(7);
-            if (!byCoord[key]) byCoord[key] = { lat: a.lat, lng: a.lng, idxs: [], precise: false };
+            if (!byCoord[key]) byCoord[key] = { lat: a.lat, lng: a.lng, idxs: [] };
             byCoord[key].idxs.push(i);
-            if (a.precise) byCoord[key].precise = true;
         });
         var postcodes = Object.values(byCoord);
 
-        var parent = postcodes.map(function (_, i) { return i; });
-        function find(i) { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; }
-
-        function planarDist(a, b) {
-            var latRad = a.lat * Math.PI / 180;
-            var dlat = a.lat - b.lat;
-            var dlng = (a.lng - b.lng) * Math.cos(latRad);
-            return Math.sqrt(dlat * dlat + dlng * dlng);
-        }
-
-        for (var i = 0; i < postcodes.length; i++) {
-            for (var j = i + 1; j < postcodes.length; j++) {
-                if (postcodes[i].precise || postcodes[j].precise) continue;
-                var ri = find(i), rj = find(j);
-                if (ri === rj) continue;
-                if (planarDist(postcodes[i], postcodes[j]) < MERGE_THRESHOLD) {
-                    parent[ri] = rj;
-                }
-            }
-        }
-
-        var groups = {};
-        postcodes.forEach(function (_, i) {
-            var root = find(i);
-            (groups[root] = groups[root] || []).push(i);
-        });
-
-        Object.values(groups).forEach(function (pcIdxs) {
-            // Precise-position points stay where they are.
-            if (pcIdxs.some(function (pcIdx) { return postcodes[pcIdx].precise; })) return;
-
-            var allIdxs = [], sumLat = 0, sumLng = 0;
-            pcIdxs.forEach(function (pcIdx) {
-                var pc = postcodes[pcIdx];
-                sumLat += pc.lat;
-                sumLng += pc.lng;
-                allIdxs.push.apply(allIdxs, pc.idxs);
-            });
-            var meanLat = sumLat / pcIdxs.length;
-            var meanLng = sumLng / pcIdxs.length;
-            var latRad  = meanLat * Math.PI / 180;
-            var n = allIdxs.length;
-
-            if (n === 1) {
-                addresses[allIdxs[0]].lat = meanLat;
-                addresses[allIdxs[0]].lng = meanLng;
-                return;
-            }
-
-            allIdxs.forEach(function (addrIdx, k) {
+        Object.values(byCoord).forEach(function (group) {
+            if (group.idxs.length < 2) return;
+            var latRad = group.lat * Math.PI / 180;
+            group.idxs.forEach(function (addrIdx, k) {
                 var r     = SPIRAL_C * Math.sqrt(k + 0.5);
                 var theta = k * GOLDEN_ANGLE;
-                addresses[addrIdx].lat = meanLat + r * Math.cos(theta);
-                addresses[addrIdx].lng = meanLng + r * Math.sin(theta) / Math.cos(latRad);
+                addresses[addrIdx].lat = group.lat + r * Math.cos(theta);
+                addresses[addrIdx].lng = group.lng + r * Math.sin(theta) / Math.cos(latRad);
             });
         });
 

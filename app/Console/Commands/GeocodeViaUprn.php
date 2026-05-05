@@ -52,7 +52,7 @@ class GeocodeViaUprn extends Command
         // Read council CSV: postcode → list of [normalized_address, uprn]
         $lookup = [];
         $handle = fopen($mappingPath, 'r');
-        $header = fgetcsv($handle);
+        $header = fgetcsv($handle, 0, ',', '"', '');
         $cols = array_flip(array_map(fn($h) => strtolower(trim($h)), $header));
 
         $uprnCol     = $cols['llpg uprn']   ?? $cols['uprn']     ?? 0;
@@ -60,25 +60,36 @@ class GeocodeViaUprn extends Command
         $addr1Col    = $cols['add line 1']  ?? null;
         $addr2Col    = $cols['add line 2']  ?? null;
         $addr3Col    = $cols['add line 3']  ?? null;
+        $addr4Col    = $cols['add line 4']  ?? null;
 
         $rows = 0;
-        while (($row = fgetcsv($handle)) !== false) {
+        $skipped = 0;
+        while (($row = fgetcsv($handle, 0, ',', '"', '')) !== false) {
             $rows++;
             $pc = $this->normPostcode($row[$postcodeCol] ?? '');
-            $uprn = trim($row[$uprnCol] ?? '');
+            $rawUprn = trim($row[$uprnCol] ?? '');
+            // Skip Excel-mangled UPRNs (lost precision in scientific notation)
+            if ($rawUprn === '' || str_contains($rawUprn, 'E+') || str_contains($rawUprn, '.')) {
+                $skipped++;
+                continue;
+            }
+            $uprn = $this->normUprn($rawUprn);
             if (!$pc || !$uprn) continue;
 
             $combined = trim(
                 ($addr1Col !== null ? ($row[$addr1Col] ?? '') . ' ' : '') .
                 ($addr2Col !== null ? ($row[$addr2Col] ?? '') . ' ' : '') .
-                ($addr3Col !== null ? ($row[$addr3Col] ?? '') : '')
+                ($addr3Col !== null ? ($row[$addr3Col] ?? '') . ' ' : '') .
+                ($addr4Col !== null ? ($row[$addr4Col] ?? '') : '')
             );
-            $combined = $this->normAddr($combined);
+            $tokens = $this->filterNoise($this->tokenSet($this->normAddr($combined)));
 
-            $lookup[$pc][] = ['addr' => $combined, 'uprn' => $uprn];
+            $lookup[$pc][] = ['tokens' => $tokens, 'tokenCount' => count($tokens), 'uprn' => $uprn];
         }
         fclose($handle);
-        $this->info("  {$rows} council records loaded across " . count($lookup) . " postcodes.");
+        $msg = "  {$rows} council records loaded across " . count($lookup) . " postcodes.";
+        if ($skipped > 0) $msg .= " (skipped {$skipped} rows with malformed UPRNs)";
+        $this->info($msg);
 
         // Match each Address against its postcode bucket
         $query = Address::query()->whereNotNull('postcode')->where('postcode', '!=', '');
@@ -106,7 +117,7 @@ class GeocodeViaUprn extends Command
                     $pc = $this->normPostcode($address->postcode);
                     if (!isset($lookup[$pc])) { $unmatched++; continue; }
 
-                    $needle = $this->normAddr($address->house_number . ' ' . $address->street_name);
+                    $needle = $this->filterNoise($this->tokenSet($this->normAddr($address->house_number . ' ' . $address->street_name)));
                     $bestUprn = $this->bestUprnMatch($needle, $lookup[$pc]);
 
                     if ($bestUprn) {
@@ -126,26 +137,62 @@ class GeocodeViaUprn extends Command
         $this->info("Matched {$matched}, unmatched {$unmatched}.");
     }
 
-    private function bestUprnMatch(string $needle, array $candidates): ?string
+    private function bestUprnMatch(array $needleTokens, array $candidates): ?string
     {
-        // Exact substring match first
-        foreach ($candidates as $cand) {
-            if (str_contains($cand['addr'], $needle)) return $cand['uprn'];
-        }
-
-        // Token match: all words of needle present in candidate
-        $needleTokens = array_filter(explode(' ', $needle));
         if (empty($needleTokens)) return null;
 
+        $bestUprn = null;
+        $bestExtras = PHP_INT_MAX;
+
         foreach ($candidates as $cand) {
-            $allFound = true;
-            foreach ($needleTokens as $t) {
-                if (!str_contains($cand['addr'], $t)) { $allFound = false; break; }
+            // All needle tokens must appear as exact words in the candidate
+            foreach ($needleTokens as $t => $_) {
+                if (!isset($cand['tokens'][$t])) continue 2;
             }
-            if ($allFound) return $cand['uprn'];
+            $extras = $cand['tokenCount'] - count($needleTokens);
+            if ($extras < $bestExtras) {
+                $bestExtras = $extras;
+                $bestUprn = $cand['uprn'];
+                if ($extras === 0) break;
+            }
         }
 
-        return null;
+        return $bestUprn;
+    }
+
+    private function tokenSet(string $s): array
+    {
+        $tokens = preg_split('/\s+/', $s, -1, PREG_SPLIT_NO_EMPTY);
+        return array_flip($tokens);
+    }
+
+    private function filterNoise(array $tokens): array
+    {
+        // Drop tokens that are postcode fragments or unambiguous town names —
+        // they're not address-distinguishing and create false extras when comparing.
+        static $noiseSet = [
+            'halifax' => true, 'bradford' => true, 'todmorden' => true,
+            'hebden' => true, 'mytholmroyd' => true, 'elland' => true,
+            'brighouse' => true, 'queensbury' => true, 'copley' => true,
+            'wainstalls' => true, 'midgley' => true, 'charlestown' => true,
+        ];
+
+        $out = [];
+        foreach ($tokens as $t => $_) {
+            if (isset($noiseSet[$t])) {
+                continue;
+            }
+            // Postcode outward (e.g. "hx1", "bd13") — letters then digits
+            if (preg_match('/^[a-z]{1,2}\d+[a-z]?$/', $t)) {
+                continue;
+            }
+            // Postcode inward (e.g. "1aa", "2qx") — digit then letters
+            if (preg_match('/^\d[a-z]{2}$/', $t)) {
+                continue;
+            }
+            $out[$t] = true;
+        }
+        return $out;
     }
 
     private function lookupCoordinatesFromOsFile(string $osPath): void
@@ -229,6 +276,13 @@ class GeocodeViaUprn extends Command
         $bar->finish();
         $this->newLine();
         $this->info('Done.');
+    }
+
+    private function normUprn(string $uprn): string
+    {
+        // OS Open UPRN stores UPRNs without leading zeros; council CSVs sometimes pad them.
+        $uprn = ltrim(trim($uprn), '0');
+        return $uprn === '' ? '0' : $uprn;
     }
 
     private function normPostcode(string $pc): string
