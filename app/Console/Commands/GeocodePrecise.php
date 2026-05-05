@@ -38,20 +38,24 @@ class GeocodePrecise extends Command
             return self::SUCCESS;
         }
 
+        $verbose = $this->output->isVerbose();
         $eta = gmdate('H:i:s', (int) ceil($ids->count() * $throttleMs / 1000));
         $this->info("Geocoding {$ids->count()} addresses via Nominatim (~1 req/sec, ETA {$eta}). Ctrl-C to stop.");
-        $bar = $this->output->createProgressBar($ids->count());
-        $bar->start();
+
+        $bar = $verbose ? null : $this->output->createProgressBar($ids->count());
+        if ($bar) $bar->start();
 
         $found = 0;
         $missing = 0;
 
         foreach ($ids as $id) {
             $address = Address::find($id);
-            $bar->advance();
+            if ($bar) $bar->advance();
             if (!$address) continue;
 
+            $label = trim($address->house_number . ' ' . $address->street_name) . ', ' . $address->postcode;
             $coords = $this->lookup($address, $userAgent);
+
             if ($coords) {
                 $address->update([
                     'latitude'         => $coords['lat'],
@@ -59,15 +63,16 @@ class GeocodePrecise extends Command
                     'precise_position' => true,
                 ]);
                 $found++;
+                if ($verbose) $this->line("  <fg=green>✓</> {$label}  →  {$coords['lat']}, {$coords['lng']}");
             } else {
                 $missing++;
+                if ($verbose) $this->line("  <fg=red>✗</> {$label}  (no match)");
             }
 
             usleep($throttleMs * 1000);
         }
 
-        $bar->finish();
-        $this->newLine();
+        if ($bar) { $bar->finish(); $this->newLine(); }
         $this->info("Done. {$found} matched precisely, {$missing} not found (will retry next run).");
 
         return self::SUCCESS;
