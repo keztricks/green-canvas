@@ -255,6 +255,7 @@ class CanvassingController extends Controller
                 'address'    => $address->full_address,
                 'street'     => $address->street_name,
                 'postcode'   => $address->postcode,
+                'precise'    => (bool) $address->precise_position,
                 'dnk'        => $address->do_not_knock,
                 'response'   => $latest?->response,
                 'turnout'    => $latest?->turnout_likelihood,
@@ -287,6 +288,24 @@ class CanvassingController extends Controller
         GeocodeMissingAddresses::dispatch();
 
         return redirect()->back()->with('success', 'Geocoding queued — refresh the map in a minute.');
+    }
+
+    public function updatePosition(Request $request, Address $address)
+    {
+        abort_if(!auth()->user()->hasAccessToWard($address->ward_id), 403, 'You do not have access to this ward.');
+
+        $validated = $request->validate([
+            'lat' => 'required|numeric|between:-90,90',
+            'lng' => 'required|numeric|between:-180,180',
+        ]);
+
+        $address->update([
+            'latitude'         => $validated['lat'],
+            'longitude'        => $validated['lng'],
+            'precise_position' => true,
+        ]);
+
+        return response()->json(['success' => true]);
     }
 
     public function store(Request $request)

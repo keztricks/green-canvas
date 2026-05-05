@@ -241,6 +241,11 @@
             }
 
             if (a.dnk) html += '<br><span style="color:#b91c1c;font-size:0.8em">⚠ Do not knock</span>';
+            html += '<hr style="margin:6px 0;border-color:#e5e7eb">'
+                + '<button class="move-dot-btn" data-id="' + a.id + '" '
+                + 'style="font-size:0.75em;color:#3b82f6;cursor:pointer;background:none;border:none;padding:0;text-decoration:underline">'
+                + (a.precise ? 'Move dot to correct position' : 'Pin dot to actual house')
+                + '</button>';
             html += '</div>';
             return html;
         }
@@ -256,8 +261,9 @@
         var byCoord = {};
         addresses.forEach(function (a, i) {
             var key = a.lat.toFixed(7) + ',' + a.lng.toFixed(7);
-            if (!byCoord[key]) byCoord[key] = { lat: a.lat, lng: a.lng, idxs: [] };
+            if (!byCoord[key]) byCoord[key] = { lat: a.lat, lng: a.lng, idxs: [], precise: false };
             byCoord[key].idxs.push(i);
+            if (a.precise) byCoord[key].precise = true;
         });
         var postcodes = Object.values(byCoord);
 
@@ -273,6 +279,7 @@
 
         for (var i = 0; i < postcodes.length; i++) {
             for (var j = i + 1; j < postcodes.length; j++) {
+                if (postcodes[i].precise || postcodes[j].precise) continue;
                 var ri = find(i), rj = find(j);
                 if (ri === rj) continue;
                 if (planarDist(postcodes[i], postcodes[j]) < MERGE_THRESHOLD) {
@@ -288,6 +295,9 @@
         });
 
         Object.values(groups).forEach(function (pcIdxs) {
+            // Precise-position points stay where they are.
+            if (pcIdxs.some(function (pcIdx) { return postcodes[pcIdx].precise; })) return;
+
             var allIdxs = [], sumLat = 0, sumLng = 0;
             pcIdxs.forEach(function (pcIdx) {
                 var pc = postcodes[pcIdx];
@@ -528,8 +538,75 @@
                 color: '#fff', weight: 1.5, opacity: 1, fillOpacity: 0.9,
             });
             marker.bindPopup(function() { return buildPopup(a); });
+            marker.on('popupopen', function (ev) {
+                var btn = ev.popup.getElement().querySelector('.move-dot-btn');
+                if (btn) btn.addEventListener('click', function () {
+                    startMove(a, marker);
+                    marker.closePopup();
+                });
+            });
             clusterGroup.addLayer(marker);
             return marker;
+        });
+
+        // ── Move-dot workflow ────────────────────────────────────────────────
+
+        var moveMode = null;
+        var moveBanner = null;
+        var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+        function ensureBanner() {
+            if (moveBanner) return moveBanner;
+            moveBanner = document.createElement('div');
+            moveBanner.style.cssText = 'position:fixed;top:1rem;left:50%;transform:translateX(-50%);'
+                + 'background:#1d4ed8;color:#fff;padding:0.5rem 1rem;border-radius:0.375rem;'
+                + 'box-shadow:0 4px 6px rgba(0,0,0,0.1);z-index:10000;font-size:0.875rem;';
+            document.body.appendChild(moveBanner);
+            return moveBanner;
+        }
+
+        function startMove(address, marker) {
+            moveMode = { address: address, marker: marker };
+            map.getContainer().style.cursor = 'crosshair';
+            ensureBanner().textContent = 'Click on the map to pin "' + address.label + '" — Esc to cancel';
+            moveBanner.style.display = 'block';
+        }
+
+        function endMove() {
+            moveMode = null;
+            map.getContainer().style.cursor = '';
+            if (moveBanner) moveBanner.style.display = 'none';
+        }
+
+        map.on('click', function (e) {
+            if (!moveMode) return;
+            var lat = e.latlng.lat, lng = e.latlng.lng;
+            var addr = moveMode.address, marker = moveMode.marker;
+
+            fetch('{{ url('/address') }}/' + addr.id + '/position', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ lat: lat, lng: lng }),
+            }).then(function (r) {
+                if (r.ok) {
+                    marker.setLatLng([lat, lng]);
+                    addr.lat = lat;
+                    addr.lng = lng;
+                    addr.precise = true;
+                } else {
+                    alert('Could not save position (HTTP ' + r.status + ')');
+                }
+            }).catch(function () { alert('Network error saving position'); });
+
+            endMove();
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && moveMode) endMove();
         });
 
         map.addLayer(clusterGroup);

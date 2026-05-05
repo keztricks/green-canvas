@@ -44,6 +44,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/address/{address}/do-not-knock', [CanvassingController::class, 'markDoNotKnock'])->name('address.mark-do-not-knock');
     Route::delete('/address/{address}/do-not-knock', [CanvassingController::class, 'clearDoNotKnock'])->name('address.clear-do-not-knock');
     Route::post('/address/create', [CanvassingController::class, 'storeAddress'])->name('address.store');
+    Route::post('/address/{address}/position', [CanvassingController::class, 'updatePosition'])->name('address.position.update');
 
     // Export routes
     Route::get('/exports', [ExportController::class, 'index'])->name('exports.index');
