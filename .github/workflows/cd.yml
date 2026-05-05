@@ -147,6 +147,7 @@ jobs:
                       APP_KEY:                $key,
                       APP_URL:                $url,
                       APP_VERSION:            $ver,
+                      LOG_CHANNEL:            "stderr",
                       LITESTREAM_REPLICA_URL: $ls,
                       AWS_ACCESS_KEY_ID:      $aws_key,
                       AWS_SECRET_ACCESS_KEY:  $aws_sec
@@ -305,6 +306,7 @@ jobs:
                       APP_KEY:                $key,
                       APP_URL:                $url,
                       APP_VERSION:            $ver,
+                      LOG_CHANNEL:            "stderr",
                       LITESTREAM_REPLICA_URL: $ls,
                       AWS_ACCESS_KEY_ID:      $aws_key,
                       AWS_SECRET_ACCESS_KEY:  $aws_sec
