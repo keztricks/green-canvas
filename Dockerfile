@@ -1,5 +1,5 @@
 # Stage 1: build Vite assets
-FROM node:20-alpine AS node-builder
+FROM node:24-alpine AS node-builder
 
 WORKDIR /app
 
