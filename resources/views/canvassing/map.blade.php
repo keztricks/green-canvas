@@ -525,7 +525,9 @@
 
         var map = L.map('map');
         var tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · '
+                + 'Contains OS data © Crown copyright and database right · '
+                + 'Council data © Calderdale Council, OGL v3',
             maxZoom: 19,
         });
         tileLayer.addTo(map);

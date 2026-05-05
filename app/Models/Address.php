@@ -24,6 +24,7 @@ class Address extends Model
         'latitude',
         'longitude',
         'precise_position',
+        'uprn',
     ];
 
     protected $casts = [
