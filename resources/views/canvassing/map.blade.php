@@ -78,6 +78,95 @@
         </div>
     </div>
 
+    {{-- Slide-up sheet (replaces the Leaflet popup) --}}
+    <div id="recordSheet" class="hidden fixed inset-0 z-[2000]">
+        <div class="absolute inset-0 bg-black/50" id="recordSheetBackdrop"></div>
+        <div id="recordSheetPanel"
+             class="absolute bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-2xl shadow-2xl max-h-[92vh] overflow-y-auto transform transition-transform duration-200 translate-y-full">
+            <div class="p-4 sm:p-5 max-w-2xl mx-auto">
+
+                {{-- Header --}}
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex-1 pr-2">
+                        <h2 id="sheetTitle" class="text-lg font-semibold text-gray-800 dark:text-white"></h2>
+                        <p id="sheetPostcode" class="text-sm text-gray-600 dark:text-gray-300"></p>
+                    </div>
+                    <button type="button" id="sheetClose" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-3xl leading-none px-2" aria-label="Close">×</button>
+                </div>
+
+                {{-- DNK warning (filled by JS) --}}
+                <div id="sheetDnk" class="hidden mb-3 p-3 bg-red-100 border-l-4 border-red-500 rounded">
+                    <p class="font-bold text-red-800 text-sm">⚠️ DO NOT KNOCK</p>
+                </div>
+
+                {{-- Latest result block (filled by JS) --}}
+                <div id="sheetLatest" class="hidden"></div>
+
+                {{-- Action row --}}
+                <div class="mt-3 flex gap-2 flex-wrap">
+                    <a id="sheetViewAddress" href="#"
+                       class="block bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-center text-sm">
+                        Address details
+                    </a>
+                    <a id="sheetDirections" href="#" target="_blank" rel="noopener"
+                       class="block bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded text-center text-sm">
+                        Directions
+                    </a>
+                    @if($canEditPositions)
+                        <button type="button" id="sheetPin"
+                                class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded text-sm">
+                            Pin dot
+                        </button>
+                    @endif
+                </div>
+
+                {{-- Record form --}}
+                <form id="sheetForm" class="mt-4 border-t pt-4 space-y-4">
+                    @csrf
+                    <input type="hidden" name="address_id" id="sheetAddressId" value="">
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Record a result</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            @foreach($responseOptions as $value => $label)
+                                <label class="response-option flex items-center space-x-2 p-2 border rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
+                                    <input type="radio" name="response" value="{{ $value }}" required class="text-green-600">
+                                    <span class="text-sm">{{ $label }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Green Party Support (optional)</label>
+                        <div class="flex gap-2 sm:gap-3">
+                            @php $likelihoodColors = [1 => '#22c55e', 2 => '#84cc16', 3 => '#eab308', 4 => '#f97316', 5 => '#ef4444']; @endphp
+                            @foreach($likelihoodColors as $n => $color)
+                                <label class="likelihood-option flex items-center justify-center rounded-lg hover:opacity-80 cursor-pointer transition-all shadow-sm flex-1" style="max-width: 64px; height: 56px; border-width: 3px; border-color: transparent; background-color: {{ $color }};">
+                                    <input type="radio" name="vote_likelihood" value="{{ $n }}" class="sr-only">
+                                    <span class="text-xl sm:text-2xl font-semibold text-white">{{ $n }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">5 = Never voting Green, 1 = Definitely voting Green</p>
+                    </div>
+
+                    <div>
+                        <label for="sheetNotes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes (optional)</label>
+                        <textarea id="sheetNotes" name="notes" rows="2" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-3 py-2 text-sm"></textarea>
+                    </div>
+
+                    <div id="sheetError" class="hidden text-red-600 text-sm"></div>
+
+                    <button type="submit" id="sheetSubmit"
+                            class="w-full bg-[#6AB023] hover:bg-[#5a9620] disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded font-bold">
+                        Save Result
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
 
@@ -218,39 +307,6 @@
 
         function esc(s) {
             return s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : '';
-        }
-
-        function buildPopup(a) {
-            var streetUrl = streetUrlTpl.replace('__STREET__', encodeURIComponent(a.street)) + '#address-' + a.id;
-            var html = '<div style="min-width:180px;font-size:0.875rem">'
-                + '<strong><a href="' + streetUrl + '" style="color:#6AB023">' + esc(a.label) + '</a></strong><br>'
-                + '<span style="color:#6b7280">' + esc(a.address) + '</span>';
-
-            if (a.response) {
-                html += '<hr style="margin:6px 0;border-color:#e5e7eb">'
-                    + '<strong>' + esc(RESPONSE_LABELS[a.response] || a.response) + '</strong>';
-                if (a.likelihood) html += ' &nbsp;<span style="color:#6b7280">Likelihood: ' + a.likelihood + '/5</span>';
-                if (a.turnout)    html += '<br><span style="color:#6b7280">' + esc(TURNOUT_LABELS[a.turnout] || a.turnout) + '</span>';
-                if (a.notes)      html += '<br><em style="color:#374151">' + esc(a.notes) + '</em>';
-                html += '<hr style="margin:6px 0;border-color:#e5e7eb">'
-                    + '<span style="color:#6b7280;font-size:0.8em">';
-                if (a.canvasser)  html += 'By ' + esc(a.canvasser);
-                if (a.knocked_at) html += (a.canvasser ? ' · ' : '') + esc(a.knocked_at);
-                html += '</span>';
-            } else {
-                html += '<br><span style="color:#9ca3af">Not yet knocked</span>';
-            }
-
-            if (a.dnk) html += '<br><span style="color:#b91c1c;font-size:0.8em">⚠ Do not knock</span>';
-            if (canEditPositions) {
-                html += '<hr style="margin:6px 0;border-color:#e5e7eb">'
-                    + '<button class="move-dot-btn" data-id="' + a.id + '" '
-                    + 'style="font-size:0.75em;color:#3b82f6;cursor:pointer;background:none;border:none;padding:0;text-decoration:underline">'
-                    + (a.precise ? 'Move dot to correct position' : 'Pin dot to actual house')
-                    + '</button>';
-            }
-            html += '</div>';
-            return html;
         }
 
         // ── Group addresses by exact lat/lng. Fan only those that share an
@@ -494,14 +550,7 @@
                 radius: 7, fillColor: '#9ca3af',
                 color: '#fff', weight: 1.5, opacity: 1, fillOpacity: 0.9,
             });
-            marker.bindPopup(function() { return buildPopup(a); });
-            marker.on('popupopen', function (ev) {
-                var btn = ev.popup.getElement().querySelector('.move-dot-btn');
-                if (btn) btn.addEventListener('click', function () {
-                    startMove(a, marker);
-                    marker.closePopup();
-                });
-            });
+            marker.on('click', function () { openSheet(a, marker); });
             clusterGroup.addLayer(marker);
             return marker;
         });
@@ -574,6 +623,163 @@
             map.setView([53.7248, -1.8658], 13);
         }
 
+        // ── Slide-up sheet (replaces map popup) ──────────────────────────────
+
+        var sheetEl       = document.getElementById('recordSheet');
+        var sheetPanel    = document.getElementById('recordSheetPanel');
+        var sheetBackdrop = document.getElementById('recordSheetBackdrop');
+        var sheetCloseBtn = document.getElementById('sheetClose');
+        var sheetForm     = document.getElementById('sheetForm');
+        var sheetSubmit   = document.getElementById('sheetSubmit');
+        var sheetError    = document.getElementById('sheetError');
+        var sheetTitle    = document.getElementById('sheetTitle');
+        var sheetPostcode = document.getElementById('sheetPostcode');
+        var sheetDnk      = document.getElementById('sheetDnk');
+        var sheetLatest   = document.getElementById('sheetLatest');
+        var sheetDirections    = document.getElementById('sheetDirections');
+        var sheetViewAddress   = document.getElementById('sheetViewAddress');
+        var sheetPin           = document.getElementById('sheetPin');
+        var sheetCtx      = null; // { address, marker }
+
+        function partyBorderClass(response) {
+            switch (response) {
+                case 'green':        return 'border-green-500';
+                case 'labour':       return 'border-red-500';
+                case 'conservative': return 'border-blue-500';
+                case 'lib_dem':      return 'border-orange-400';
+                case 'undecided':    return 'border-yellow-500';
+                case 'reform':       return '';
+                default:             return 'border-gray-400';
+            }
+        }
+
+        function renderLatestBlock(a) {
+            if (!a.response) {
+                sheetLatest.classList.add('hidden');
+                sheetLatest.innerHTML = '';
+                return;
+            }
+            var borderCls   = partyBorderClass(a.response);
+            var reformStyle = a.response === 'reform' ? ' style="border-left-color:#17B9D1;"' : '';
+            var likelihoodNote = '';
+            if (a.likelihood === 1) likelihoodNote = ' <span class="text-xs text-green-600">(Definitely)</span>';
+            else if (a.likelihood === 5) likelihoodNote = ' <span class="text-xs text-red-600">(Never)</span>';
+
+            var html = '<div class="mt-2 p-3 bg-white dark:bg-gray-700 rounded border-l-4 ' + borderCls + '"' + reformStyle + '>'
+                + '<p class="font-medium text-sm">Latest: <span class="font-bold">' + esc(RESPONSE_LABELS[a.response] || a.response) + '</span></p>';
+            if (a.likelihood) {
+                html += '<p class="text-sm text-gray-700 dark:text-gray-300 mt-1">Green support: <span class="font-semibold">' + a.likelihood + '/5</span>' + likelihoodNote + '</p>';
+            }
+            if (a.turnout) {
+                html += '<p class="text-sm text-gray-600 dark:text-gray-300 mt-1">' + esc(TURNOUT_LABELS[a.turnout] || a.turnout) + '</p>';
+            }
+            if (a.notes) {
+                html += '<p class="text-sm text-gray-600 dark:text-gray-300 mt-1">' + esc(a.notes) + '</p>';
+            }
+            html += '<p class="text-xs text-gray-500 mt-1">'
+                +     (a.knocked_at ? esc(a.knocked_at) : '')
+                +     (a.canvasser ? ' by ' + esc(a.canvasser) : '')
+                + '</p>'
+                + '</div>';
+
+            sheetLatest.innerHTML = html;
+            sheetLatest.classList.remove('hidden');
+        }
+
+        function openSheet(address, marker) {
+            sheetCtx = { address: address, marker: marker };
+
+            sheetTitle.textContent = address.label;
+            sheetPostcode.textContent = address.postcode || '';
+            document.getElementById('sheetAddressId').value = address.id;
+
+            sheetDnk.classList.toggle('hidden', !address.dnk);
+            renderLatestBlock(address);
+
+            sheetDirections.href  = 'https://www.google.com/maps/dir/?api=1&destination=' + address.lat + ',' + address.lng;
+            sheetViewAddress.href = streetUrlTpl.replace('__STREET__', encodeURIComponent(address.street)) + '#address-' + address.id;
+            if (sheetPin) sheetPin.textContent = address.precise ? 'Move dot' : 'Pin dot';
+
+            // Reset form
+            sheetForm.reset();
+            document.getElementById('sheetAddressId').value = address.id;
+            sheetError.classList.add('hidden');
+            sheetError.textContent = '';
+            sheetSubmit.disabled = false;
+            sheetSubmit.textContent = 'Save Result';
+
+            sheetEl.classList.remove('hidden');
+            requestAnimationFrame(function () { sheetPanel.classList.remove('translate-y-full'); });
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSheet() {
+            sheetPanel.classList.add('translate-y-full');
+            setTimeout(function () {
+                sheetEl.classList.add('hidden');
+                document.body.style.overflow = '';
+                sheetCtx = null;
+            }, 200);
+        }
+
+        sheetCloseBtn.addEventListener('click', closeSheet);
+        sheetBackdrop.addEventListener('click', closeSheet);
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && !sheetEl.classList.contains('hidden')) closeSheet();
+        });
+
+        if (sheetPin) {
+            sheetPin.addEventListener('click', function () {
+                if (!sheetCtx) return;
+                var ctx = sheetCtx;
+                closeSheet();
+                setTimeout(function () { startMove(ctx.address, ctx.marker); }, 220);
+            });
+        }
+
+        sheetForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (!sheetCtx) return;
+            sheetError.classList.add('hidden');
+            sheetSubmit.disabled = true;
+            sheetSubmit.textContent = 'Saving…';
+
+            fetch('{{ route('knock-result.store') }}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: new FormData(sheetForm),
+            }).then(function (r) {
+                if (!r.ok) {
+                    return r.json().then(function (j) {
+                        throw new Error(j.message || ('HTTP ' + r.status));
+                    }).catch(function () { throw new Error('HTTP ' + r.status); });
+                }
+                return r.json();
+            }).then(function (json) {
+                var a = sheetCtx.address;
+                a.response   = json.response;
+                a.likelihood = json.likelihood;
+                a.turnout    = json.turnout;
+                a.notes      = json.notes;
+                a.canvasser  = json.canvasser;
+                a.knocked_at = json.knocked_at;
+
+                var fn = COLOR_FNS[currentView];
+                if (fn) sheetCtx.marker.setStyle({ fillColor: fn(a) });
+
+                closeSheet();
+            }).catch(function (err) {
+                sheetError.textContent = 'Could not save (' + err.message + '). Try again.';
+                sheetError.classList.remove('hidden');
+                sheetSubmit.disabled = false;
+                sheetSubmit.textContent = 'Save Result';
+            });
+        });
+
         // ── View switching ───────────────────────────────────────────────────
 
         var CHOROPLETH_VIEWS = ['coverage', 'support'];
@@ -609,7 +815,7 @@
             btn.addEventListener('click', function () { applyView(btn.dataset.view); });
         });
 
-        // Honour ?focus=N — center on that address, open its popup.
+        // Honour ?focus=N — center on that address and open its sheet.
         var focusId = parseInt(new URLSearchParams(window.location.search).get('focus') || '0', 10);
         if (focusId) {
             currentView = 'supporter';
@@ -621,12 +827,13 @@
         if (focusId) {
             var idx = addresses.findIndex(function (a) { return a.id === focusId; });
             if (idx !== -1) {
-                var marker = markers[idx];
-                map.setView(marker.getLatLng(), 18);
+                var focusMarker = markers[idx];
+                var focusAddress = addresses[idx];
+                map.setView(focusMarker.getLatLng(), 18);
                 if (typeof clusterGroup.zoomToShowLayer === 'function') {
-                    clusterGroup.zoomToShowLayer(marker, function () { marker.openPopup(); });
+                    clusterGroup.zoomToShowLayer(focusMarker, function () { openSheet(focusAddress, focusMarker); });
                 } else {
-                    marker.openPopup();
+                    openSheet(focusAddress, focusMarker);
                 }
             }
         }

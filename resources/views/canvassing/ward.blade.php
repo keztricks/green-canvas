@@ -8,16 +8,16 @@
             </div>
 
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <div class="flex justify-between items-start mb-6">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-6">
                     <div>
                         <h2 class="text-3xl font-bold mb-2 text-gray-800 dark:text-white">{{ $ward->name }}</h2>
                         <p class="text-gray-600 dark:text-gray-300">Select a street to begin canvassing</p>
                     </div>
-                    <div class="flex gap-2">
-                        <a href="{{ route('canvassing.map', $ward) }}" class="border border-[#6AB023] text-[#6AB023] hover:bg-green-50 dark:hover:bg-gray-700 px-4 py-2 rounded whitespace-nowrap">
+                    <div class="flex gap-2 flex-wrap sm:flex-nowrap">
+                        <a href="{{ route('canvassing.map', $ward) }}" class="flex-1 sm:flex-none border border-[#6AB023] text-[#6AB023] hover:bg-green-50 dark:hover:bg-gray-700 px-4 py-2 rounded text-center whitespace-nowrap">
                             View Map
                         </a>
-                        <a href="{{ route('canvassing.all-streets', $ward) }}" class="bg-[#6AB023] hover:bg-[#5a9620] text-white px-4 py-2 rounded whitespace-nowrap">
+                        <a href="{{ route('canvassing.all-streets', $ward) }}" class="flex-1 sm:flex-none bg-[#6AB023] hover:bg-[#5a9620] text-white px-4 py-2 rounded text-center whitespace-nowrap">
                             View All Addresses
                         </a>
                     </div>
