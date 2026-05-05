@@ -606,7 +606,27 @@
             btn.addEventListener('click', function () { applyView(btn.dataset.view); });
         });
 
+        // Honour ?focus=N — center on that address, open its popup.
+        var focusId = parseInt(new URLSearchParams(window.location.search).get('focus') || '0', 10);
+        if (focusId) {
+            currentView = 'supporter';
+            localStorage.setItem('mapView', currentView);
+        }
+
         applyView(currentView);
+
+        if (focusId) {
+            var idx = addresses.findIndex(function (a) { return a.id === focusId; });
+            if (idx !== -1) {
+                var marker = markers[idx];
+                map.setView(marker.getLatLng(), 18);
+                if (typeof clusterGroup.zoomToShowLayer === 'function') {
+                    clusterGroup.zoomToShowLayer(marker, function () { marker.openPopup(); });
+                } else {
+                    marker.openPopup();
+                }
+            }
+        }
     })();
     </script>
 
