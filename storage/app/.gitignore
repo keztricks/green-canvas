@@ -2,4 +2,7 @@
 !private/
 !public/
 !ward-references/
+!ward-references/*
+!uprn-data/
+!uprn-data/*
 !.gitignore

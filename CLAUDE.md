@@ -73,6 +73,45 @@ Defined in `KnockResult::responseOptions()` — includes political parties plus 
 
 Exports are queued jobs that generate Excel files via `phpoffice/phpspreadsheet`. Results are stored as `Export` model records and downloaded via signed URLs.
 
+### Geocoding
+
+Addresses can be placed on a map at one of three precision levels:
+
+1. **Property-level (preferred)** — via UPRN. Each address is matched to a UPRN from a council-provided address/UPRN mapping (e.g. a Council Tax FOI release under OGL v3), then the UPRN is looked up against [OS Open UPRN](https://www.ordnancesurvey.co.uk/products/os-open-uprn) for rooftop coordinates.
+2. **Postcode centroid (fallback)** — via [postcodes.io](https://postcodes.io). All addresses sharing a postcode get the same lat/lng; the map fans them out in a tight sunflower spiral.
+3. **Manual** — admins and ward admins can pin un-placed addresses by clicking them on the map (see the "Missing addresses" sheet in the map view).
+
+Required attribution (already in the map's tile-layer attribution):
+- `Contains OS data © Crown copyright and database right [year]`
+- `Council data © {Council} Council, OGL v3`
+
+#### Runbook
+
+```bash
+# 1. One-off per council (or whenever the OS Open UPRN release updates):
+#    Merge the council UPRN/address CSV with the OS coordinate file.
+#    Output is small (~5MB for Calderdale), licence-safe to commit/distribute.
+php artisan addresses:build-uprn-data \
+  --council=path/to/council-foi.csv \
+  --os-uprn=path/to/osopenuprn_NNNN.csv \
+  --output=storage/app/uprn-data/{council}.csv
+
+# 2. After each electoral-register import, run UPRN-based geocoding:
+php artisan addresses:geocode-uprn --data=storage/app/uprn-data/{council}.csv
+
+# 3. Optional postcode-centroid fallback for whatever didn't match in step 2:
+php artisan addresses:geocode
+
+# 4. Anything still without coordinates → admins/ward-admins place via the
+#    "Missing addresses" floating button on the map view.
+```
+
+`--ward=N` and `--force` are available on both geocode commands.
+
+The merged UPRN data files in `storage/app/uprn-data/` are committed to the
+repository (the OS Open UPRN and Calderdale FOI licences both permit
+redistribution with attribution, which the map already provides).
+
 ## Key Conventions
 
 - **Email storage**: always lowercased via `User::setEmailAttribute()` mutator
