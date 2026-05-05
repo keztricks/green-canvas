@@ -157,11 +157,12 @@
     <div id="recordSheet" class="hidden fixed inset-0 z-[2000]">
         <div class="absolute inset-0 bg-black/50" id="recordSheetBackdrop"></div>
         <div id="recordSheetPanel"
-             class="absolute bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-2xl shadow-2xl max-h-[92vh] overflow-y-auto transform transition-transform duration-200 translate-y-full">
+             class="absolute bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-2xl shadow-2xl overflow-y-auto transform transition-transform duration-200 translate-y-full"
+             style="max-height: 85dvh;">
             <div class="p-4 sm:p-5 max-w-2xl mx-auto">
 
-                {{-- Header --}}
-                <div class="flex justify-between items-start mb-3">
+                {{-- Sticky header so the close button is always reachable --}}
+                <div class="sticky top-0 -mx-4 sm:-mx-5 -mt-4 sm:-mt-5 px-4 sm:px-5 pt-4 sm:pt-5 pb-3 mb-3 bg-white dark:bg-gray-800 z-10 flex justify-between items-start border-b border-gray-200 dark:border-gray-700">
                     <div class="flex-1 pr-2">
                         <h2 id="sheetTitle" class="text-lg font-semibold text-gray-800 dark:text-white"></h2>
                         <p id="sheetPostcode" class="text-sm text-gray-600 dark:text-gray-300"></p>
@@ -691,7 +692,10 @@
 
         // ── Map + markers ────────────────────────────────────────────────────
 
-        var map = L.map('map', { zoomControl: false, preferCanvas: true });
+        // Custom canvas renderer with a generous tolerance (10px) so taps near
+        // a dot count as a hit — much more forgiving than Leaflet's default 0.
+        var canvasRenderer = L.canvas({ tolerance: 10, padding: 0.5 });
+        var map = L.map('map', { zoomControl: false, preferCanvas: true, renderer: canvasRenderer });
         // Move zoom + attribution out of the bottom-right corner where they
         // collide with our locate / missing-addresses buttons.
         L.control.zoom({ position: 'topright' }).addTo(map);
@@ -776,7 +780,7 @@
 
         function buildMarker(a) {
             var marker = L.circleMarker([a.lat, a.lng], {
-                radius: 7, fillColor: '#9ca3af',
+                radius: 8, fillColor: '#9ca3af',
                 color: '#fff', weight: 1.5, opacity: 1, fillOpacity: 0.9,
             });
             marker.on('click', function () { openSheet(a, marker); });
