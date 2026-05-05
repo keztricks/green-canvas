@@ -12,7 +12,7 @@ A self-hosted door-to-door canvassing management app for local Green Party branc
 - **Log knock results.** Party preference, turnout likelihood, vote likelihood, free-text notes. Multiple knocks per address with full history.
 - **Track elections.** Local, general, and by-elections. Per-address voting status (voted / not voted / unknown) so you know who to chase for postal-vote follow-up.
 - **Map view.** Every address as a dot, coloured by supporter / party / likelihood / coverage / support. Filterable legend, ward boundaries, optional cross-ward "all wards" mode. Property-precise pins where UPRN data is available, postcode-fanned otherwise.
-- **Exports.** Excel files for paper canvassing or sharing with regional party staff. Scheduled per ward per user.
+- **Exports.** Excel files for paper canvassing or reporting. Scheduled per ward per user.
 - **Roles.** Admin, ward admin, canvasser. Ward-scoping enforced both in middleware and in business logic.
 
 ## Who this is for
