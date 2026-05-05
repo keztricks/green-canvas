@@ -2,7 +2,7 @@ name: PR Preview
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, closed]
+    types: [labeled, unlabeled, synchronize, reopened, closed]
 
 env:
   SERVICE_NAME: green-canvas-pr-${{ github.event.number }}
@@ -12,7 +12,7 @@ jobs:
   deploy-preview:
     name: Deploy PR Preview
     runs-on: ubuntu-latest
-    if: github.event.action != 'closed'
+    if: contains(github.event.pull_request.labels.*.name, 'deploy-preview') && github.event.action != 'closed'
 
     permissions:
       pull-requests: write
@@ -170,7 +170,7 @@ jobs:
   destroy-preview:
     name: Destroy PR Preview
     runs-on: ubuntu-latest
-    if: github.event.action == 'closed'
+    if: github.event.action == 'closed' || (github.event.action == 'unlabeled' && github.event.label.name == 'deploy-preview')
 
     permissions:
       pull-requests: write
