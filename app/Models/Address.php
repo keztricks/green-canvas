@@ -23,11 +23,13 @@ class Address extends Model
         'do_not_knock_at',
         'latitude',
         'longitude',
+        'precise_position',
     ];
 
     protected $casts = [
         'do_not_knock' => 'boolean',
         'do_not_knock_at' => 'datetime',
+        'precise_position' => 'boolean',
     ];
 
     public function ward()
