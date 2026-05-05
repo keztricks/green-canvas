@@ -100,6 +100,7 @@
         var streetUrlTpl     = '{{ route('canvassing.street', ['ward' => $ward->id, 'streetName' => '__STREET__']) }}';
         var RESPONSE_LABELS  = @json($responseOptions);
         var TURNOUT_LABELS   = @json($turnoutOptions);
+        var canEditPositions = @json($canEditPositions);
 
         // ── Colour schemes ──────────────────────────────────────────────────
 
@@ -241,11 +242,13 @@
             }
 
             if (a.dnk) html += '<br><span style="color:#b91c1c;font-size:0.8em">⚠ Do not knock</span>';
-            html += '<hr style="margin:6px 0;border-color:#e5e7eb">'
-                + '<button class="move-dot-btn" data-id="' + a.id + '" '
-                + 'style="font-size:0.75em;color:#3b82f6;cursor:pointer;background:none;border:none;padding:0;text-decoration:underline">'
-                + (a.precise ? 'Move dot to correct position' : 'Pin dot to actual house')
-                + '</button>';
+            if (canEditPositions) {
+                html += '<hr style="margin:6px 0;border-color:#e5e7eb">'
+                    + '<button class="move-dot-btn" data-id="' + a.id + '" '
+                    + 'style="font-size:0.75em;color:#3b82f6;cursor:pointer;background:none;border:none;padding:0;text-decoration:underline">'
+                    + (a.precise ? 'Move dot to correct position' : 'Pin dot to actual house')
+                    + '</button>';
+            }
             html += '</div>';
             return html;
         }
