@@ -99,6 +99,11 @@
         {{-- Map (fills remaining height, edge-to-edge on mobile) --}}
         <div class="flex-1 min-h-0 mx-0 sm:mx-6 sm:rounded-lg shadow relative">
             <div id="map" class="absolute inset-0 sm:rounded-lg"></div>
+            {{-- Loading overlay: hidden once marker chunked-loading completes --}}
+            <div id="mapLoading" class="absolute inset-0 z-[900] bg-white/85 dark:bg-gray-900/85 flex flex-col items-center justify-center transition-opacity duration-200 sm:rounded-lg">
+                <div class="map-spinner"></div>
+                <p id="mapLoadingText" class="mt-3 text-sm text-gray-700 dark:text-gray-200 font-medium">Loading addresses…</p>
+            </div>
             @if($canEditPositions && $missingAddresses->count() > 0)
                 <button type="button" id="missingBtn"
                         class="absolute bottom-20 right-4 z-[800] bg-white dark:bg-gray-800 shadow-lg rounded-full w-12 h-12 flex items-center justify-center text-gray-700 dark:text-gray-200 hover:text-[#6AB023]"
@@ -237,10 +242,53 @@
         </div>
     </div>
 
+    {{-- Run BEFORE the heavy data block so rotation happens during JSON parse + marker build --}}
+    <script>
+    (function () {
+        var loadingTextEl = document.getElementById('mapLoadingText');
+        var loadingEl     = document.getElementById('mapLoading');
+        var phrases = [
+            'Putting on our canvassing boots…',
+            'Reticulating spines…',
+            'Knocking on virtual doors…',
+            'Counting the houses…',
+            'Plotting the leafleting route…',
+            'Aligning the postcodes…',
+            'Limbering up the dots…',
+            'Delivering some hope…',
+            'Brewing some tea…',
+            'Digging out the rosettes…',
+            'Made with love in Halifax…',
+        ];
+        function rotate() {
+            if (!loadingTextEl) return;
+            loadingTextEl.textContent = phrases[Math.floor(Math.random() * phrases.length)];
+        }
+        rotate();
+        var timer = setInterval(rotate, 1800);
+        // Expose hide function for the main script to call when ready.
+        window.__hideMapLoading = function () {
+            clearInterval(timer);
+            if (!loadingEl) return;
+            loadingEl.style.opacity = '0';
+            setTimeout(function () { loadingEl.style.display = 'none'; }, 200);
+        };
+    })();
+    </script>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
 
     <style>
+        .map-spinner {
+            width: 44px;
+            height: 44px;
+            border: 4px solid rgba(106, 176, 35, 0.18);
+            border-top-color: #6AB023;
+            border-radius: 50%;
+            animation: mapSpin 0.9s linear infinite;
+        }
+        @keyframes mapSpin { to { transform: rotate(360deg); } }
         .legend-item { background: transparent; border: none; color: inherit; }
         .legend-item:hover { background: rgba(0,0,0,0.04); }
         .legend-item-active { background: rgba(106,176,35,0.15) !important; box-shadow: inset 0 0 0 1px #6AB023; }
@@ -722,7 +770,7 @@
         // thousands of individual markers at once on mobile.
         var clusterGroup = L.markerClusterGroup({
             maxClusterRadius: 40,
-            disableClusteringAtZoom: 17,
+            disableClusteringAtZoom: 15,
             chunkedLoading: true,
         });
 
@@ -736,7 +784,26 @@
         }
 
         var markers = addresses.map(buildMarker);
-        clusterGroup.addLayers(markers); // bulk add — much faster than per-marker
+
+        if (markers.length === 0) {
+            window.__hideMapLoading && window.__hideMapLoading();
+        } else {
+            // Note: chunkedLoading + chunkProgress are constructor options on
+            // L.markerClusterGroup (set above), not addLayers options. We rely
+            // on a deferred check after the synchronous addLayers call returns,
+            // and a hard-stop fallback in case progress never reaches 100%.
+            clusterGroup.addLayers(markers);
+            // Hide once cluster group has all our markers (fast paths)
+            // or after a max wait (slow devices).
+            var attempts = 0;
+            var poll = setInterval(function () {
+                attempts++;
+                if (clusterGroup.getLayers().length >= markers.length || attempts > 60) {
+                    clearInterval(poll);
+                    window.__hideMapLoading && window.__hideMapLoading();
+                }
+            }, 250);
+        }
 
         // ── Move-dot workflow ────────────────────────────────────────────────
 
