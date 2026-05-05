@@ -22,10 +22,10 @@ jobs:
           extensions: pdo_sqlite, sqlite3, zip, intl
           coverage: none
 
-      - name: Set up Node 20
+      - name: Set up Node 24
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
 
       - name: Cache Composer dependencies
