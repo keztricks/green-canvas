@@ -248,17 +248,22 @@
             @endif
         </div>
 
-        <div class="ml-4 flex flex-col gap-2">
+        <div class="ml-3 sm:ml-4 flex flex-col gap-1.5 w-20 sm:w-28 shrink-0">
             @if(!$address->do_not_knock)
                 <button onclick="toggleForm({{ $address->id }})"
-                        class="bg-[#6AB023] hover:bg-[#5a9620] text-white px-4 py-2 rounded w-20">
+                        class="bg-[#6AB023] hover:bg-[#5a9620] text-white px-2 sm:px-4 py-1.5 sm:py-2 rounded text-center text-xs sm:text-sm">
                     {{ $hasResult ? 'New' : 'Record' }}
                 </button>
             @endif
             @if($address->latitude !== null)
                 <a href="{{ route('canvassing.map', $address->ward_id) }}?focus={{ $address->id }}"
-                   class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded w-20 text-center text-sm">
+                   class="block bg-blue-500 hover:bg-blue-600 text-white px-2 sm:px-4 py-1.5 sm:py-2 rounded text-center text-xs sm:text-sm">
                     Map
+                </a>
+                <a href="https://www.google.com/maps/dir/?api=1&destination={{ $address->latitude }},{{ $address->longitude }}"
+                   target="_blank" rel="noopener"
+                   class="block bg-indigo-500 hover:bg-indigo-600 text-white px-2 sm:px-4 py-1.5 sm:py-2 rounded text-center text-xs sm:text-sm">
+                    Directions
                 </a>
             @endif
         </div>

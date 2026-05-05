@@ -328,14 +328,27 @@ class CanvassingController extends Controller
         $validated['knocked_at'] = now();
         $validated['user_id'] = auth()->id();
 
-        KnockResult::create($validated);
+        $knockResult = KnockResult::create($validated);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success'       => true,
+                'response'      => $knockResult->response,
+                'response_label'=> KnockResult::responseOptions()[$knockResult->response] ?? $knockResult->response,
+                'likelihood'    => $knockResult->vote_likelihood,
+                'turnout'       => $knockResult->turnout_likelihood,
+                'notes'         => $knockResult->notes,
+                'canvasser'     => auth()->user()->name,
+                'knocked_at'    => $knockResult->knocked_at->format('d M Y H:i'),
+            ]);
+        }
 
         $redirect = back()->with('success', 'Result recorded successfully')->withFragment('address-' . $validated['address_id']);
-        
+
         if ($request->has('search')) {
             $redirect->withInput(['search' => $request->input('search')]);
         }
-        
+
         return $redirect;
     }
 
