@@ -280,7 +280,9 @@ class CanvassingController extends Controller
         $responseOptions = KnockResult::responseOptions();
         $turnoutOptions  = KnockResult::turnoutLikelihoodOptions();
 
-        return view('canvassing.map', compact('ward', 'wards', 'addressData', 'totalCount', 'geocodedCount', 'knockedCount', 'responseOptions', 'turnoutOptions'));
+        $canEditPositions = $user->isAdmin() || $user->isWardAdmin();
+
+        return view('canvassing.map', compact('ward', 'wards', 'addressData', 'totalCount', 'geocodedCount', 'knockedCount', 'responseOptions', 'turnoutOptions', 'canEditPositions'));
     }
 
     public function geocode()
@@ -292,7 +294,9 @@ class CanvassingController extends Controller
 
     public function updatePosition(Request $request, Address $address)
     {
-        abort_if(!auth()->user()->hasAccessToWard($address->ward_id), 403, 'You do not have access to this ward.');
+        $user = auth()->user();
+        abort_if(!$user->isAdmin() && !$user->isWardAdmin(), 403, 'Only admins and ward admins can move dots.');
+        abort_if(!$user->hasAccessToWard($address->ward_id), 403, 'You do not have access to this ward.');
 
         $validated = $request->validate([
             'lat' => 'required|numeric|between:-90,90',

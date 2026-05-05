@@ -382,10 +382,16 @@
 
                         <div class="ml-4 flex flex-col gap-2">
                             @if(!$address->do_not_knock)
-                                <button onclick="toggleForm({{ $address->id }})" 
+                                <button onclick="toggleForm({{ $address->id }})"
                                         class="bg-[#6AB023] hover:bg-[#5a9620] text-white px-4 py-2 rounded w-20">
                                     {{ $hasResult ? 'New' : 'Record' }}
                                 </button>
+                            @endif
+                            @if($address->latitude !== null)
+                                <a href="{{ route('canvassing.map', $address->ward_id) }}?focus={{ $address->id }}"
+                                   class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded w-20 text-center text-sm">
+                                    Map
+                                </a>
                             @endif
                         </div>
                     </div>
