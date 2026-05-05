@@ -8,22 +8,25 @@
 
         {{-- Compact header row --}}
         <div class="flex-shrink-0 px-3 sm:px-6 pt-3 pb-2 flex items-center gap-2">
-            <a href="{{ route('canvassing.ward', $ward) }}"
+            <a href="{{ $ward ? route('canvassing.ward', $ward) : route('canvassing.index') }}"
                class="shrink-0 text-[#6AB023] hover:bg-green-50 dark:hover:bg-gray-700 rounded-full w-9 h-9 flex items-center justify-center text-lg"
                aria-label="Back">
                 ←
             </a>
             <div class="min-w-0 flex-1">
                 <h1 class="text-base sm:text-2xl font-semibold text-gray-800 dark:text-white truncate">
-                    {{ $ward->name }} <span class="hidden sm:inline text-gray-400 font-normal">— Map</span>
+                    {{ $ward ? $ward->name : 'All wards' }} <span class="hidden sm:inline text-gray-400 font-normal">— Map</span>
                 </h1>
             </div>
             @if($wards->count() > 1)
                 <select id="wardSelect"
                         class="shrink-0 max-w-[40vw] sm:max-w-none text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#6AB023]"
                         aria-label="Switch ward">
+                    <option value="{{ route('canvassing.map.all') }}" {{ $ward === null ? 'selected' : '' }}>
+                        All wards
+                    </option>
                     @foreach($wards as $w)
-                        <option value="{{ route('canvassing.map', $w) }}" {{ $w->id === $ward->id ? 'selected' : '' }}>
+                        <option value="{{ route('canvassing.map', $w) }}" {{ $ward && $w->id === $ward->id ? 'selected' : '' }}>
                             {{ $w->name }}
                         </option>
                     @endforeach
@@ -72,6 +75,15 @@
                 </div>
             </div>
 
+            <button type="button" id="boundariesToggle"
+                    class="shrink-0 bg-white dark:bg-gray-800 shadow rounded-lg w-9 h-9 flex items-center justify-center text-gray-600 dark:text-gray-300"
+                    aria-label="Toggle ward boundaries" aria-pressed="true" title="Toggle ward boundaries">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21 3 6"/>
+                    <line x1="9" y1="3" x2="9" y2="18"/>
+                    <line x1="15" y1="6" x2="15" y2="21"/>
+                </svg>
+            </button>
             <button type="button" id="legendToggle"
                     class="shrink-0 bg-white dark:bg-gray-800 shadow rounded-lg w-9 h-9 flex items-center justify-center text-gray-600 dark:text-gray-300"
                     aria-label="Toggle legend" aria-expanded="false">
@@ -229,6 +241,10 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
 
     <style>
+        .legend-item { background: transparent; border: none; color: inherit; }
+        .legend-item:hover { background: rgba(0,0,0,0.04); }
+        .legend-item-active { background: rgba(106,176,35,0.15) !important; box-shadow: inset 0 0 0 1px #6AB023; }
+        .legend-item-dimmed { opacity: 0.4; }
         .leaflet-control-attribution {
             max-width: calc(100% - 80px);
             font-size: 0.7rem;
@@ -265,7 +281,12 @@
     (function () {
         var addresses        = @json($addressData);
         var missingAddresses = @json($missingAddresses ?? []);
-        var streetUrlTpl     = '{{ route('canvassing.street', ['ward' => $ward->id, 'streetName' => '__STREET__']) }}';
+        // Per-address street URL — works in both single-ward and all-wards modes
+        // because addr.ward_id is included in the payload.
+        var streetUrlBase    = '{{ url('/ward') }}';
+        function streetUrlFor(addr) {
+            return streetUrlBase + '/' + addr.ward_id + '/street/' + encodeURIComponent(addr.street) + '#address-' + addr.id;
+        }
         var RESPONSE_LABELS  = @json($responseOptions);
         var TURNOUT_LABELS   = @json($turnoutOptions);
         var canEditPositions = @json($canEditPositions);
@@ -376,9 +397,18 @@
             ],
         };
 
+        // Choropleth legends are display-only; dot views are filterable.
+        var CHOROPLETH_LEGEND_VIEWS = ['coverage', 'support'];
+
         function renderLegend(view) {
+            var filterable = CHOROPLETH_LEGEND_VIEWS.indexOf(view) === -1;
             return LEGENDS[view].map(function(item) {
-                return '<span style="white-space:nowrap">' + dot(item[1]) + item[0] + '</span>';
+                if (filterable) {
+                    return '<button type="button" class="legend-item flex items-center whitespace-nowrap rounded px-1.5 py-0.5 transition cursor-pointer" data-color="' + item[1] + '">'
+                        + dot(item[1]) + item[0]
+                        + '</button>';
+                }
+                return '<span class="whitespace-nowrap">' + dot(item[1]) + item[0] + '</span>';
             }).join('');
         }
 
@@ -613,7 +643,7 @@
 
         // ── Map + markers ────────────────────────────────────────────────────
 
-        var map = L.map('map', { zoomControl: false });
+        var map = L.map('map', { zoomControl: false, preferCanvas: true });
         // Move zoom + attribution out of the bottom-right corner where they
         // collide with our locate / missing-addresses buttons.
         L.control.zoom({ position: 'topright' }).addTo(map);
@@ -626,7 +656,75 @@
         });
         tileLayer.addTo(map);
 
-        var clusterGroup = L.markerClusterGroup({ maxClusterRadius: 40, disableClusteringAtZoom: 1 });
+        // ── Ward boundaries ─────────────────────────────────────────────────
+        // Loaded asynchronously so first paint isn't delayed. Highlights the
+        // current ward in single-ward mode; subtle outlines otherwise.
+        var currentWardName = @json($ward?->name);
+
+        // The OS Boundary-Line punctuation differs slightly from our DB names
+        // (e.g. "Salterhebble, Southowram & Skircoat Green" vs the DB's
+        // "Salterhebble Southowram and Skircoat Green"). Normalise both.
+        function normWardName(s) {
+            return (s || '').toLowerCase()
+                .replace(/&/g, 'and')
+                .replace(/[,]/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+        var currentWardNorm = normWardName(currentWardName);
+
+        var boundariesLayer = null;
+        var boundariesVisible = localStorage.getItem('mapBoundaries') !== 'off';
+
+        fetch('{{ route('canvassing.boundaries') }}', { headers: { 'Accept': 'application/geo+json' } })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (geo) {
+                if (!geo) return;
+                boundariesLayer = L.geoJSON(geo, {
+                    style: function (feature) {
+                        var isCurrent = currentWardNorm && normWardName(feature.properties.name) === currentWardNorm;
+                        return isCurrent
+                            ? { color: '#6AB023', weight: 3, opacity: 1.0, fillOpacity: 0.06 }
+                            : { color: '#1f2937', weight: 1.5, opacity: 0.85, fillOpacity: 0, dashArray: '4,3' };
+                    },
+                    interactive: false,
+                });
+                if (boundariesVisible) boundariesLayer.addTo(map);
+                applyBoundariesToggleState();
+            })
+            .catch(function () { /* boundaries are decorative — silent fail */ });
+
+        function applyBoundariesToggleState() {
+            var btn = document.getElementById('boundariesToggle');
+            if (!btn) return;
+            btn.setAttribute('aria-pressed', String(boundariesVisible));
+            if (boundariesVisible) {
+                btn.style.backgroundColor = '#6AB023';
+                btn.style.color = '#ffffff';
+            } else {
+                btn.style.backgroundColor = '';
+                btn.style.color = '';
+            }
+        }
+
+        document.getElementById('boundariesToggle')?.addEventListener('click', function () {
+            boundariesVisible = !boundariesVisible;
+            localStorage.setItem('mapBoundaries', boundariesVisible ? 'on' : 'off');
+            if (boundariesLayer) {
+                if (boundariesVisible) boundariesLayer.addTo(map);
+                else map.removeLayer(boundariesLayer);
+            }
+            applyBoundariesToggleState();
+        });
+        applyBoundariesToggleState();
+
+        // Cluster aggressively below zoom 17 so we never render tens of
+        // thousands of individual markers at once on mobile.
+        var clusterGroup = L.markerClusterGroup({
+            maxClusterRadius: 40,
+            disableClusteringAtZoom: 17,
+            chunkedLoading: true,
+        });
 
         function buildMarker(a) {
             var marker = L.circleMarker([a.lat, a.lng], {
@@ -637,11 +735,8 @@
             return marker;
         }
 
-        var markers = addresses.map(function (a) {
-            var marker = buildMarker(a);
-            clusterGroup.addLayer(marker);
-            return marker;
-        });
+        var markers = addresses.map(buildMarker);
+        clusterGroup.addLayers(markers); // bulk add — much faster than per-marker
 
         // ── Move-dot workflow ────────────────────────────────────────────────
 
@@ -851,7 +946,7 @@
             renderLatestBlock(address);
 
             sheetDirections.href  = 'https://www.google.com/maps/dir/?api=1&destination=' + address.lat + ',' + address.lng;
-            sheetViewAddress.href = streetUrlTpl.replace('__STREET__', encodeURIComponent(address.street)) + '#address-' + address.id;
+            sheetViewAddress.href = streetUrlFor(address);
             if (sheetPin) sheetPin.textContent = address.precise ? 'Move dot' : 'Pin dot';
 
             // Reset form
@@ -1013,9 +1108,47 @@
         var CHOROPLETH_VIEWS = ['coverage', 'support'];
         var currentView = localStorage.getItem('mapView') || 'supporter';
 
+        // Filter state: empty Set = show all; otherwise only show dots whose
+        // current colour is in the Set.
+        var activeFilters = new Set();
+
+        function applyFilters() {
+            var fn = COLOR_FNS[currentView];
+            if (!fn) return; // choropleth — filtering doesn't apply
+            var filtering = activeFilters.size > 0;
+            markers.forEach(function (m, i) {
+                var color = fn(addresses[i]);
+                var visible = !filtering || activeFilters.has(color);
+                m.setStyle({
+                    fillColor: color,
+                    fillOpacity: visible ? 0.9 : 0.05,
+                    opacity: visible ? 1 : 0.15,
+                });
+            });
+            // Sync legend item active styling
+            document.querySelectorAll('.legend-item').forEach(function (el) {
+                var active = activeFilters.has(el.dataset.color);
+                el.classList.toggle('legend-item-active', active);
+                el.classList.toggle('legend-item-dimmed', filtering && !active);
+            });
+        }
+
+        function bindLegendFilters() {
+            document.querySelectorAll('.legend-item').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var c = btn.dataset.color;
+                    if (activeFilters.has(c)) activeFilters.delete(c);
+                    else activeFilters.add(c);
+                    applyFilters();
+                });
+            });
+        }
+
         function applyView(view) {
             currentView = view;
             localStorage.setItem('mapView', view);
+            // View change → drop any old filters (different categories per view).
+            activeFilters.clear();
 
             // Update tab/select UI first so the highlight is correct even if
             // the map operations below throw.
@@ -1027,6 +1160,7 @@
             var sel = document.getElementById('viewSelect');
             if (sel && sel.value !== view) sel.value = view;
             document.getElementById('legend').innerHTML = renderLegend(view);
+            bindLegendFilters();
 
             if (CHOROPLETH_VIEWS.indexOf(view) !== -1) {
                 if (map.hasLayer(clusterGroup)) map.removeLayer(clusterGroup);
@@ -1038,8 +1172,7 @@
                 hideHexGrid();
                 if (!map.hasLayer(tileLayer))   tileLayer.addTo(map);
                 if (!map.hasLayer(clusterGroup)) map.addLayer(clusterGroup);
-                var fn = COLOR_FNS[view];
-                markers.forEach(function (m, i) { m.setStyle({ fillColor: fn(addresses[i]) }); });
+                applyFilters();
             }
         }
 

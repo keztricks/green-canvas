@@ -2,7 +2,14 @@
     <div class="py-6">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <h2 class="text-3xl font-bold mb-6 text-gray-800 dark:text-white">Select a Ward to Canvas</h2>
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+                    <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Select a Ward to Canvas</h2>
+                    @if($wards->isNotEmpty() && $wards->count() > 1)
+                        <a href="{{ route('canvassing.map.all') }}" class="bg-[#6AB023] hover:bg-[#5a9620] text-white px-4 py-2 rounded text-center whitespace-nowrap">
+                            All wards on map
+                        </a>
+                    @endif
+                </div>
 
                 @if($wards->isEmpty())
                     <div class="text-center py-12">
