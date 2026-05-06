@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Ward;
-use App\Models\UserWardExportSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
@@ -14,9 +13,9 @@ class UserController extends Controller
     public function index()
     {
         $currentUser = auth()->user();
-        
+
         // Only admins and ward admins can access
-        if (!$currentUser->isAdmin() && !$currentUser->isWardAdmin()) {
+        if (! $currentUser->isAdmin() && ! $currentUser->isWardAdmin()) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -26,47 +25,47 @@ class UserController extends Controller
         } else {
             $users = User::with('wards')->orderBy('name')->get();
         }
-        
+
         // Get current user's ward IDs for filtering actions
         $userWardIds = $currentUser->isAdmin() ? null : $currentUser->wards->pluck('id')->toArray();
-        
+
         return view('users.index', compact('users', 'userWardIds'));
     }
 
     public function create()
     {
         $currentUser = auth()->user();
-        
-        if (!$currentUser->isAdmin() && !$currentUser->isWardAdmin()) {
+
+        if (! $currentUser->isAdmin() && ! $currentUser->isWardAdmin()) {
             abort(403, 'Unauthorized action.');
         }
 
         // Admins see all wards, ward admins only see their assigned wards
-        $wards = $currentUser->isAdmin() 
+        $wards = $currentUser->isAdmin()
             ? Ward::orderBy('name')->get()
             : $currentUser->wards()->orderBy('name')->get();
-        
+
         return view('users.create', compact('wards'));
     }
 
     public function store(Request $request)
     {
         $currentUser = auth()->user();
-        
-        if (!$currentUser->isAdmin() && !$currentUser->isWardAdmin()) {
+
+        if (! $currentUser->isAdmin() && ! $currentUser->isWardAdmin()) {
             abort(403, 'Unauthorized action.');
         }
 
         // Ward admins can only create canvassers
-        $allowedRoles = $currentUser->isAdmin() 
-            ? 'admin,canvasser,ward_admin' 
+        $allowedRoles = $currentUser->isAdmin()
+            ? 'admin,canvasser,ward_admin'
             : 'canvasser';
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => ['required', 'confirmed', Password::defaults()],
-            'role' => 'required|in:' . $allowedRoles,
+            'role' => 'required|in:'.$allowedRoles,
             'wards' => 'nullable|array',
             'wards.*' => 'exists:wards,id',
         ]);
@@ -75,8 +74,8 @@ class UserController extends Controller
         if ($currentUser->isWardAdmin() && $request->has('wards')) {
             $userWardIds = $currentUser->wards->pluck('id')->toArray();
             $invalidWards = array_diff($request->wards, $userWardIds);
-            
-            if (!empty($invalidWards)) {
+
+            if (! empty($invalidWards)) {
                 return redirect()->back()
                     ->withInput()
                     ->withErrors(['wards' => 'You can only assign users to wards you manage.']);
@@ -86,7 +85,7 @@ class UserController extends Controller
         $validated['password'] = Hash::make($validated['password']);
 
         $user = User::create($validated);
-        
+
         // Sync wards for non-admin users
         if ($request->has('wards')) {
             $user->wards()->sync($request->wards);
@@ -99,8 +98,8 @@ class UserController extends Controller
     public function edit(User $user)
     {
         $currentUser = auth()->user();
-        
-        if (!$currentUser->isAdmin() && !$currentUser->isWardAdmin()) {
+
+        if (! $currentUser->isAdmin() && ! $currentUser->isWardAdmin()) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -115,23 +114,18 @@ class UserController extends Controller
         }
 
         // Admins see all wards, ward admins only see their assigned wards
-        $wards = $currentUser->isAdmin() 
+        $wards = $currentUser->isAdmin()
             ? Ward::orderBy('name')->get()
             : $currentUser->wards()->orderBy('name')->get();
-        
-        // Get export schedules for the user
-        $exportSchedules = UserWardExportSchedule::where('user_id', $user->id)
-            ->pluck('frequency', 'ward_id')
-            ->toArray();
-        
-        return view('users.edit', compact('user', 'wards', 'exportSchedules'));
+
+        return view('users.edit', compact('user', 'wards'));
     }
 
     public function update(Request $request, User $user)
     {
         $currentUser = auth()->user();
-        
-        if (!$currentUser->isAdmin() && !$currentUser->isWardAdmin()) {
+
+        if (! $currentUser->isAdmin() && ! $currentUser->isWardAdmin()) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -151,41 +145,39 @@ class UserController extends Controller
         }
 
         // Ward admins can only set role to canvasser
-        $allowedRoles = $currentUser->isAdmin() 
-            ? 'admin,canvasser,ward_admin' 
+        $allowedRoles = $currentUser->isAdmin()
+            ? 'admin,canvasser,ward_admin'
             : 'canvasser';
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
             'password' => ['nullable', 'confirmed', Password::defaults()],
-            'role' => 'required|in:' . $allowedRoles,
+            'role' => 'required|in:'.$allowedRoles,
             'wards' => 'nullable|array',
             'wards.*' => 'exists:wards,id',
-            'export_schedules' => 'nullable|array',
-            'export_schedules.*' => 'in:none,daily,weekly',
         ]);
 
         // Ward admins can only assign users to their own wards
         if ($currentUser->isWardAdmin() && $request->has('wards')) {
             $userWardIds = $currentUser->wards->pluck('id')->toArray();
             $invalidWards = array_diff($request->wards, $userWardIds);
-            
-            if (!empty($invalidWards)) {
+
+            if (! empty($invalidWards)) {
                 return redirect()->back()
                     ->withInput()
                     ->withErrors(['wards' => 'You can only assign users to wards you manage.']);
             }
         }
 
-        if (!empty($validated['password'])) {
+        if (! empty($validated['password'])) {
             $validated['password'] = Hash::make($validated['password']);
         } else {
             unset($validated['password']);
         }
 
         $user->update($validated);
-        
+
         // Sync wards
         if ($request->has('wards')) {
             if ($currentUser->isWardAdmin()) {
@@ -202,19 +194,6 @@ class UserController extends Controller
             // Only admins can remove all wards
             $user->wards()->sync([]);
         }
-        
-        // Update export schedules
-        if ($request->has('export_schedules')) {
-            foreach ($request->export_schedules as $wardId => $frequency) {
-                // Only update schedules for wards the user is assigned to
-                if (in_array($wardId, $user->wards->pluck('id')->toArray())) {
-                    UserWardExportSchedule::updateOrCreate(
-                        ['user_id' => $user->id, 'ward_id' => $wardId],
-                        ['frequency' => $frequency]
-                    );
-                }
-            }
-        }
 
         return redirect()->route('users.index')
             ->with('success', 'User updated successfully');
@@ -223,9 +202,9 @@ class UserController extends Controller
     public function destroy(User $user)
     {
         $currentUser = auth()->user();
-        
+
         // Only admins can delete users
-        if (!$currentUser->isAdmin()) {
+        if (! $currentUser->isAdmin()) {
             abort(403, 'Unauthorized action.');
         }
 

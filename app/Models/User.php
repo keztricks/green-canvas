@@ -13,7 +13,9 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     const ROLE_ADMIN = 'admin';
+
     const ROLE_CANVASSER = 'canvasser';
+
     const ROLE_WARD_ADMIN = 'ward_admin';
 
     /**
@@ -101,14 +103,6 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the export schedules for this user.
-     */
-    public function exportSchedules()
-    {
-        return $this->hasMany(UserWardExportSchedule::class);
-    }
-
-    /**
      * Check if user has access to a specific ward.
      */
     public function hasAccessToWard($wardId): bool
@@ -117,7 +111,7 @@ class User extends Authenticatable
         if ($this->isAdmin()) {
             return true;
         }
-        
+
         // Ward admins and canvassers only have access to their assigned wards
         return $this->wards()->where('wards.id', $wardId)->exists();
     }
