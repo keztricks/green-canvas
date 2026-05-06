@@ -74,6 +74,10 @@ Defined in `KnockResult::responseOptions()` — includes political parties plus 
 
 Exports are queued jobs that generate Excel files via `phpoffice/phpspreadsheet`. Results are stored as `Export` model records and downloaded via signed URLs.
 
+### Bulk import of existing supporter data
+
+`canvassing:import-member-knocks` records a knock per matching address from a supporter CSV (e.g. NationBuilder/CAN2 export with `can2_user_address` + `zip_code` columns). Postcode-bucketed lookup, normalised full-line address comparison, prefix-match fallback. Defaults to `response=green`, `vote_likelihood=1`. Supports `--dry-run`, `--matched-out=` / `--unmatched-out=` audit CSVs, `--skip-if-knocked`, and `--interactive` (prompt with postcode candidates when no exact / multiple matches). Implementation: `app/Console/Commands/ImportMemberKnocks.php`.
+
 ### Geocoding
 
 Addresses can be placed on a map at one of three precision levels:
