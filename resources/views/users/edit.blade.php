@@ -70,47 +70,6 @@
                         @enderror
                     </div>
 
-                    @if(\App\Models\FeatureFlag::isEnabled('export_email_schedules'))
-                    <div id="exportSchedulesSection" class="{{ in_array($user->role, ['ward_admin', 'canvasser']) ? '' : 'hidden' }} border-t border-gray-200 dark:border-gray-700 pt-6">
-                        <p class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-4">Export Email Schedule</p>
-                        <p class="text-xs text-gray-600 dark:text-gray-400 mb-4">Configure automatic export email frequency for each assigned ward</p>
-                        
-                        <div id="exportSchedulesList" class="space-y-4">
-                            @foreach($wards as $ward)
-                                <div class="export-schedule-ward {{ in_array($ward->id, old('wards', $user->wards->pluck('id')->toArray())) ? '' : 'hidden' }}" data-ward-id="{{ $ward->id }}">
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">{{ $ward->name }}</label>
-                                    <div class="flex gap-4">
-                                        @php
-                                            $currentFrequency = old('export_schedules.' . $ward->id, $exportSchedules[$ward->id] ?? 'none');
-                                        @endphp
-                                        
-                                        <label class="flex items-center cursor-pointer">
-                                            <input type="radio" name="export_schedules[{{ $ward->id }}]" value="none" 
-                                                   {{ $currentFrequency === 'none' ? 'checked' : '' }}
-                                                   class="sr-only ward-schedule-radio">
-                                            <span class="schedule-option px-4 py-2 border border-gray-300 dark:border-gray-600 rounded {{ $currentFrequency === 'none' ? 'bg-[#6AB023] text-white border-[#6AB023]' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600' }}">None</span>
-                                        </label>
-                                        
-                                        <label class="flex items-center cursor-pointer">
-                                            <input type="radio" name="export_schedules[{{ $ward->id }}]" value="daily" 
-                                                   {{ $currentFrequency === 'daily' ? 'checked' : '' }}
-                                                   class="sr-only ward-schedule-radio">
-                                            <span class="schedule-option px-4 py-2 border border-gray-300 dark:border-gray-600 rounded {{ $currentFrequency === 'daily' ? 'bg-[#6AB023] text-white border-[#6AB023]' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600' }}">Daily</span>
-                                        </label>
-                                        
-                                        <label class="flex items-center cursor-pointer">
-                                            <input type="radio" name="export_schedules[{{ $ward->id }}]" value="weekly" 
-                                                   {{ $currentFrequency === 'weekly' ? 'checked' : '' }}
-                                                   class="sr-only ward-schedule-radio">
-                                            <span class="schedule-option px-4 py-2 border border-gray-300 dark:border-gray-600 rounded {{ $currentFrequency === 'weekly' ? 'bg-[#6AB023] text-white border-[#6AB023]' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600' }}">Weekly</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                    @endif
-
                     <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
                         <p class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-4">Change Password (optional)</p>
                         
@@ -148,47 +107,13 @@
 </x-app-layout>
 
 <script>
-// Show/hide wards and export schedules sections based on role
+// Show/hide wards section based on role
 document.getElementById('role').addEventListener('change', function() {
     const wardsSection = document.getElementById('wardsSection');
-    const exportSchedulesSection = document.getElementById('exportSchedulesSection');
     if (this.value === 'ward_admin' || this.value === 'canvasser') {
         wardsSection.classList.remove('hidden');
-        exportSchedulesSection.classList.remove('hidden');
     } else {
         wardsSection.classList.add('hidden');
-        exportSchedulesSection.classList.add('hidden');
     }
-});
-
-// Show/hide export schedule items based on ward selection
-const wardCheckboxes = document.querySelectorAll('input[name="wards[]"]');
-wardCheckboxes.forEach(checkbox => {
-    checkbox.addEventListener('change', function() {
-        const wardId = this.value;
-        const scheduleItem = document.querySelector(`.export-schedule-ward[data-ward-id="${wardId}"]`);
-        if (scheduleItem) {
-            if (this.checked) {
-                scheduleItem.classList.remove('hidden');
-            } else {
-                scheduleItem.classList.add('hidden');
-            }
-        }
-    });
-});
-
-// Radio button styling for export schedules
-document.querySelectorAll('.ward-schedule-radio').forEach(radio => {
-    radio.addEventListener('change', function() {
-        const container = this.closest('.flex');
-        container.querySelectorAll('.schedule-option').forEach(option => {
-            option.classList.remove('bg-[#6AB023]', 'text-white', 'border-[#6AB023]');
-            option.classList.add('bg-white', 'text-gray-700');
-        });
-        
-        const selectedOption = this.nextElementSibling;
-        selectedOption.classList.remove('bg-white', 'text-gray-700');
-        selectedOption.classList.add('bg-[#6AB023]', 'text-white', 'border-[#6AB023]');
-    });
 });
 </script>

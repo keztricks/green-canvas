@@ -7,7 +7,6 @@ use App\Models\Election;
 use App\Models\Export;
 use App\Models\KnockResult;
 use App\Models\User;
-use App\Models\UserWardExportSchedule;
 use App\Models\Ward;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -144,7 +143,7 @@ class DatabaseSeeder extends Seeder
                         'house_number' => $houseNumber,
                         'street_name' => $streetTemplate['street_name'],
                         'town' => 'Demoville',
-                        'postcode' => 'DE' . (($index % 9) + 1) . ' ' . chr(65 + ($index % 26)) . chr(65 + ($houseIndex % 26)),
+                        'postcode' => 'DE'.(($index % 9) + 1).' '.chr(65 + ($index % 26)).chr(65 + ($houseIndex % 26)),
                         'constituency' => $demoConstituency,
                         'sort_order' => (int) preg_replace('/[^0-9]/', '', $houseNumber),
                     ]);
@@ -162,7 +161,7 @@ class DatabaseSeeder extends Seeder
         $activeElections = $elections->where('active', true);
         foreach ($createdAddresses as $address) {
             foreach ($activeElections as $election) {
-                if ($election->wards->isNotEmpty() && !$election->wards->pluck('id')->contains($address->ward_id)) {
+                if ($election->wards->isNotEmpty() && ! $election->wards->pluck('id')->contains($address->ward_id)) {
                     continue;
                 }
 
@@ -198,25 +197,13 @@ class DatabaseSeeder extends Seeder
             'notes' => 'Historical demo export for all wards',
         ]);
 
-        UserWardExportSchedule::create([
-            'user_id' => $wardAdmin->id,
-            'ward_id' => $northWard->id,
-            'frequency' => 'weekly',
-        ]);
-
-        UserWardExportSchedule::create([
-            'user_id' => $wardAdmin->id,
-            'ward_id' => Ward::where('name', 'South Ward')->first()->id,
-            'frequency' => 'none',
-        ]);
-
         $this->command->info('Demo data created:');
-        $this->command->info('  Users: ' . User::count());
-        $this->command->info('  Wards: ' . Ward::count());
-        $this->command->info('  Addresses: ' . Address::count());
-        $this->command->info('  Knock Results: ' . KnockResult::count());
-        $this->command->info('  Elections: ' . Election::count());
-        $this->command->info('  Exports: ' . Export::count());
+        $this->command->info('  Users: '.User::count());
+        $this->command->info('  Wards: '.Ward::count());
+        $this->command->info('  Addresses: '.Address::count());
+        $this->command->info('  Knock Results: '.KnockResult::count());
+        $this->command->info('  Elections: '.Election::count());
+        $this->command->info('  Exports: '.Export::count());
     }
 
     private function createKnockResults(Address $address, $users): void

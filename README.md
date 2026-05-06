@@ -128,6 +128,25 @@ If you use OS data, the map's tile-layer attribution **must** include:
 
 Both are automatic — don't remove them.
 
+## Bulk-importing existing supporter data
+
+If you already have a list of known supporters or members (e.g. a NationBuilder/CAN2 export), you can record a knock against each matching address in one go rather than hand-entering them:
+
+```bash
+# Dry-run first; review the matched/unmatched CSVs before committing
+php artisan canvassing:import-member-knocks members.csv \
+  --user=<canvasser-user-id> \
+  --dry-run \
+  --matched-out=storage/app/members-matched.csv \
+  --unmatched-out=storage/app/members-unmatched.csv
+
+# Then re-run without --dry-run
+```
+
+By default it expects `can2_user_address` (full address line) and `zip_code` (postcode) columns and records `response=green`, `vote_likelihood=1`, with a note flagging the resident as a Green Party member. All of these are overridable — see `php artisan canvassing:import-member-knocks --help`.
+
+Matching is postcode-bucketed, then compares a normalised full-line address against `house_number + street_name`, with a prefix-match fallback for cases where the source CSV and address book split the house number / street name differently. Pass `--interactive` to be prompted with the postcode's candidates whenever no exact match is found (or more than one matches).
+
 ## Deploying
 
 A `Dockerfile` is included as a starting point. The repo also ships a complete reference deployment to **AWS App Runner + S3** via [`.github/workflows/cd.yml`](.github/workflows/cd.yml) — see [docs/deployment.md](docs/deployment.md) for the from-scratch setup walkthrough, including IAM, bucket creation, GitHub secrets, and the database cutover procedure. The container itself is plain Docker, so you can run it on any host that supports persistent disk or its own Litestream sidecar.
