@@ -130,7 +130,9 @@ Both are automatic — don't remove them.
 
 ## Deploying
 
-`Dockerfile` and [`update.sh`](update.sh) are present as starting points. For production, you'll want to:
+A `Dockerfile` is included as a starting point. The repo also ships a complete reference deployment to **AWS App Runner + S3** via [`.github/workflows/cd.yml`](.github/workflows/cd.yml) — see [docs/deployment.md](docs/deployment.md) for the from-scratch setup walkthrough, including IAM, bucket creation, GitHub secrets, and the database cutover procedure. The container itself is plain Docker, so you can run it on any host that supports persistent disk or its own Litestream sidecar.
+
+For any production setup:
 
 - Set `APP_ENV=production` and `APP_DEBUG=false`.
 - Configure mail (`MAIL_*`) — scheduled exports go out as email attachments.
