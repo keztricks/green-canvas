@@ -127,13 +127,6 @@ jobs:
 
             echo "Waiting for initial deploy..."
             wait_running "$SERVICE_ARN"
-
-            echo "Updating with real APP_URL..."
-            aws apprunner update-service \
-              --service-arn "$SERVICE_ARN" \
-              --source-configuration "$(source_config "https://$SERVICE_URL")" >/dev/null
-
-            wait_running "$SERVICE_ARN"
           fi
 
           echo "service_arn=$SERVICE_ARN"   >> $GITHUB_OUTPUT
