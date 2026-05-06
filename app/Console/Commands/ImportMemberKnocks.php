@@ -23,6 +23,7 @@ class ImportMemberKnocks extends Command
         {--skip-if-knocked : Skip addresses that already have any knock result}
         {--unmatched-out= : Write unmatched/ambiguous rows to this CSV path}
         {--matched-out= : Write matched rows (with address_id, knock_result_id) to this CSV path}
+        {--interactive : When no/ambiguous address match in a postcode, prompt to pick a candidate}
         {--dry-run : Match only — do not write any KnockResult rows}';
 
     protected $description = 'Match a member address list against the address book and record a knock for each match.';
@@ -106,6 +107,7 @@ class ImportMemberKnocks extends Command
             'note' => $this->option('note'),
             'dry_run' => (bool) $this->option('dry-run'),
             'skip_if_knocked' => (bool) $this->option('skip-if-knocked'),
+            'interactive' => (bool) $this->option('interactive'),
             'address_col' => $this->option('address-col'),
             'postcode_col' => $this->option('postcode-col'),
         ];
@@ -213,19 +215,68 @@ class ImportMemberKnocks extends Command
         $matches = $this->matchAddress($candidates, $normAddress);
 
         if ($matches->isEmpty()) {
-            $stats['unmatched_no_address_match']++;
-            $this->writeUnmatched($outputs['unmatched'], $rowNum, $rawAddress, $rawPostcode, 'no_address_match_in_postcode', $candidates->pluck('id')->all());
+            $picked = $config['interactive']
+                ? $this->promptCandidate($rowNum, $rawAddress, $rawPostcode, $candidates, 'No address match in this postcode.')
+                : null;
+            if ($picked === null) {
+                $stats['unmatched_no_address_match']++;
+                $this->writeUnmatched($outputs['unmatched'], $rowNum, $rawAddress, $rawPostcode, 'no_address_match_in_postcode', $candidates->pluck('id')->all());
+
+                return;
+            }
+            $this->recordKnock($picked, $rowNum, $rawAddress, $rawPostcode, $config, $stats, $outputs);
 
             return;
         }
         if ($matches->count() > 1) {
-            $stats['ambiguous']++;
-            $this->writeUnmatched($outputs['unmatched'], $rowNum, $rawAddress, $rawPostcode, 'multiple_matches', $matches->pluck('id')->all());
+            $picked = $config['interactive']
+                ? $this->promptCandidate($rowNum, $rawAddress, $rawPostcode, $matches, 'Multiple address matches.')
+                : null;
+            if ($picked === null) {
+                $stats['ambiguous']++;
+                $this->writeUnmatched($outputs['unmatched'], $rowNum, $rawAddress, $rawPostcode, 'multiple_matches', $matches->pluck('id')->all());
+
+                return;
+            }
+            $this->recordKnock($picked, $rowNum, $rawAddress, $rawPostcode, $config, $stats, $outputs);
 
             return;
         }
 
         $this->recordKnock($matches->first(), $rowNum, $rawAddress, $rawPostcode, $config, $stats, $outputs);
+    }
+
+    private function promptCandidate(int $rowNum, string $rawAddress, string $rawPostcode, Collection $candidates, string $reason): ?Address
+    {
+        $this->newLine();
+        $this->warn("Row {$rowNum}: {$reason}");
+        $this->line("  CSV: \"{$rawAddress}\" ({$rawPostcode})");
+        $this->line('  Candidates:');
+        $list = $candidates->values();
+        foreach ($list as $i => $c) {
+            $this->line(sprintf('    [%d] #%d  %s', $i + 1, $c->id, $c->full_address));
+        }
+        $this->line('    [0] skip (record as unmatched)');
+
+        while (true) {
+            $answer = $this->ask('Pick a number');
+            if ($answer === null || $answer === '') {
+                return null;
+            }
+            if (! ctype_digit((string) $answer)) {
+                $this->line('  Enter a number.');
+
+                continue;
+            }
+            $n = (int) $answer;
+            if ($n === 0) {
+                return null;
+            }
+            if ($n >= 1 && $n <= $list->count()) {
+                return $list[$n - 1];
+            }
+            $this->line('  Out of range.');
+        }
     }
 
     private function candidatesForPostcode(string $normPostcode, array &$byPostcode): Collection
